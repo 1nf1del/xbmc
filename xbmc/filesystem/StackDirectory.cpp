@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include <stdlib.h>
@@ -25,17 +13,15 @@
 #include "FileItem.h"
 #include "utils/StringUtils.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "URL.h"
+#include "ServiceBroker.h"
 
 namespace XFILE
 {
-  CStackDirectory::CStackDirectory()
-  {
-  }
+  CStackDirectory::CStackDirectory() = default;
 
-  CStackDirectory::~CStackDirectory()
-  {
-  }
+  CStackDirectory::~CStackDirectory() = default;
 
   bool CStackDirectory::GetDirectory(const CURL& url, CFileItemList& items)
   {
@@ -60,7 +46,7 @@ namespace XFILE
     // Load up our REs
     VECCREGEXP  RegExps;
     CRegExp     tempRE(true, CRegExp::autoUtf8);
-    const std::vector<std::string>& strRegExps = g_advancedSettings.m_videoStackRegExps;
+    const std::vector<std::string>& strRegExps = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_videoStackRegExps;
     std::vector<std::string>::const_iterator itRegExp = strRegExps.begin();
     while (itRegExp != strRegExps.end())
     {
@@ -186,7 +172,7 @@ namespace XFILE
     if (vecPaths.empty())
       return false;
 
-    // because " , " is used as a seperator any "," in the real paths are double escaped
+    // because " , " is used as a separator any "," in the real paths are double escaped
     for (std::vector<std::string>::iterator itPath = vecPaths.begin(); itPath != vecPaths.end(); ++itPath)
       StringUtils::Replace(*itPath, ",,", ",");
 

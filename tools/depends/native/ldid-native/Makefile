@@ -5,11 +5,9 @@ DEPS= ../../Makefile.include Makefile
 
 # lib name, version
 LIBNAME=ldid
-VERSION=1.0.0
+VERSION=2
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

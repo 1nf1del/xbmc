@@ -1,26 +1,15 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "DVDStreamInfo.h"
 
 #include "DVDDemuxers/DVDDemux.h"
+#include "cores/VideoPlayer/Interface/Addon/DemuxCrypto.h"
 
 CDVDStreamInfo::CDVDStreamInfo()                                                     { extradata = NULL; Clear(); }
 CDVDStreamInfo::CDVDStreamInfo(const CDVDStreamInfo &right, bool withextradata )     { extradata = NULL; Clear(); Assign(right, withextradata); }
@@ -40,8 +29,7 @@ void CDVDStreamInfo::Clear()
   codec = AV_CODEC_ID_NONE;
   type = STREAM_NONE;
   uniqueId = -1;
-  realtime = false;
-  software = false;
+  codecOptions = 0;
   codec_tag  = 0;
   flags = 0;
   filename.clear();
@@ -51,6 +39,9 @@ void CDVDStreamInfo::Clear()
 
   extradata = NULL;
   extrasize = 0;
+
+  cryptoSession = nullptr;
+  externalInterfaces = nullptr;
 
   fpsscale = 0;
   fpsrate  = 0;
@@ -81,7 +72,7 @@ bool CDVDStreamInfo::Equal(const CDVDStreamInfo& right, bool withextradata)
   if( codec     != right.codec
   ||  type      != right.type
   ||  uniqueId  != right.uniqueId
-  ||  realtime  != right.realtime
+  ||  demuxerId != right.demuxerId
   ||  codec_tag != right.codec_tag
   ||  flags     != right.flags)
     return false;
@@ -120,6 +111,13 @@ bool CDVDStreamInfo::Equal(const CDVDStreamInfo& right, bool withextradata)
 
   // SUBTITLE
 
+  // Crypto
+  if ((cryptoSession.get() == nullptr) != (right.cryptoSession.get() == nullptr))
+    return false;
+
+  if (cryptoSession && !(*cryptoSession.get() == *right.cryptoSession.get()))
+    return false;
+
   return true;
 }
 
@@ -137,7 +135,7 @@ void CDVDStreamInfo::Assign(const CDVDStreamInfo& right, bool withextradata)
   codec = right.codec;
   type = right.type;
   uniqueId = right.uniqueId;
-  realtime = right.realtime;
+  demuxerId = right.demuxerId;
   codec_tag = right.codec_tag;
   flags = right.flags;
   filename = right.filename;
@@ -159,6 +157,9 @@ void CDVDStreamInfo::Assign(const CDVDStreamInfo& right, bool withextradata)
     extradata = 0;
   }
 
+  cryptoSession = right.cryptoSession;
+  externalInterfaces = right.externalInterfaces;
+
   // VIDEO
   fpsscale = right.fpsscale;
   fpsrate  = right.fpsrate;
@@ -173,7 +174,7 @@ void CDVDStreamInfo::Assign(const CDVDStreamInfo& right, bool withextradata)
   orientation = right.orientation;
   bitsperpixel = right.bitsperpixel;
   vfr = right.vfr;
-  software = right.software;
+  codecOptions = right.codecOptions;
   stereo_mode = right.stereo_mode;
 
   // AUDIO
@@ -194,13 +195,13 @@ void CDVDStreamInfo::Assign(const CDemuxStream& right, bool withextradata)
   codec = right.codec;
   type = right.type;
   uniqueId = right.uniqueId;
-  realtime = right.realtime;
+  demuxerId = right.demuxerId;
   codec_tag = right.codec_fourcc;
-  profile   = right.profile;
-  level     = right.level;
-  flags     = right.flags;
+  profile = right.profile;
+  level = right.level;
+  flags = right.flags;
 
-  if( withextradata && right.ExtraSize )
+  if (withextradata && right.ExtraSize)
   {
     extrasize = right.ExtraSize;
     extradata = malloc(extrasize);
@@ -209,7 +210,10 @@ void CDVDStreamInfo::Assign(const CDemuxStream& right, bool withextradata)
     memcpy(extradata, right.ExtraData, extrasize);
   }
 
-  if( right.type == STREAM_AUDIO )
+  cryptoSession = right.cryptoSession;
+  externalInterfaces = right.externalInterfaces;
+
+  if (right.type == STREAM_AUDIO)
   {
     const CDemuxStreamAudio *stream = static_cast<const CDemuxStreamAudio*>(&right);
     channels      = stream->iChannels;
@@ -219,7 +223,7 @@ void CDVDStreamInfo::Assign(const CDemuxStream& right, bool withextradata)
     bitspersample = stream->iBitsPerSample;
     channellayout = stream->iChannelLayout;
   }
-  else if(  right.type == STREAM_VIDEO )
+  else if (right.type == STREAM_VIDEO)
   {
     const CDemuxStreamVideo *stream = static_cast<const CDemuxStreamVideo*>(&right);
     fpsscale  = stream->iFpsScale;
@@ -234,7 +238,7 @@ void CDVDStreamInfo::Assign(const CDemuxStream& right, bool withextradata)
     bitsperpixel = stream->iBitsPerPixel;
     stereo_mode = stream->stereo_mode;
   }
-  else if(  right.type == STREAM_SUBTITLE )
+  else if (right.type == STREAM_SUBTITLE)
   {
   }
 }

@@ -1,7 +1,7 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile
 
 APPNAME=yasm
 VERSION=1.1.0
@@ -12,8 +12,6 @@ ARCHIVE=$(SOURCE).tar.gz
 CONFIGURE=./configure --prefix=$(PREFIX) --disable-nls --disable-python
 
 APP=$(PLATFORM)/$(APPNAME)
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

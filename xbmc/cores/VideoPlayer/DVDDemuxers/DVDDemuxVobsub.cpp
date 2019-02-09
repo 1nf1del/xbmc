@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "DVDDemuxVobsub.h"
@@ -24,15 +12,13 @@
 #include "DVDStreamInfo.h"
 #include "DVDCodecs/DVDCodecs.h"
 #include "DVDDemuxFFmpeg.h"
-#include "DVDDemuxPacket.h"
-#include "DVDClock.h"
+#include "cores/VideoPlayer/Interface/Addon/DemuxPacket.h"
+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
 #include "DVDSubtitles/DVDSubtitleStream.h"
 
 #include <string.h>
 
-CDVDDemuxVobsub::CDVDDemuxVobsub()
-{
-}
+CDVDDemuxVobsub::CDVDDemuxVobsub() = default;
 
 CDVDDemuxVobsub::~CDVDDemuxVobsub()
 {
@@ -73,12 +59,12 @@ bool CDVDDemuxVobsub::Open(const std::string& filename, int source, const std::s
   CFileItem item(vobsub, false);
   item.SetMimeType("video/x-vobsub");
   item.SetContentLookup(false);
-  m_Input.reset(CDVDFactoryInputStream::CreateInputStream(NULL, item));
+  m_Input = CDVDFactoryInputStream::CreateInputStream(NULL, item);
   if(!m_Input.get() || !m_Input->Open())
     return false;
 
   m_Demuxer.reset(new CDVDDemuxFFmpeg());
-  if(!m_Demuxer->Open(m_Input.get()))
+  if(!m_Demuxer->Open(m_Input))
     return false;
 
   CDVDStreamInfo hints;
@@ -86,7 +72,6 @@ bool CDVDDemuxVobsub::Open(const std::string& filename, int source, const std::s
   hints.codec = AV_CODEC_ID_DVD_SUBTITLE;
 
   char line[2048];
-  DECLARE_UNUSED(bool,res)
 
   SState state;
   state.delay = 0;
@@ -97,13 +82,13 @@ bool CDVDDemuxVobsub::Open(const std::string& filename, int source, const std::s
     if (*line == 0 || *line == '\r' || *line == '\n' || *line == '#')
       continue;
     else if (strncmp("langidx:", line, 8) == 0)
-      res = ParseLangIdx(state, line + 8);
+      ParseLangIdx(state, line + 8);
     else if (strncmp("delay:", line, 6) == 0)
-      res = ParseDelay(state, line + 6);
+      ParseDelay(state, line + 6);
     else if (strncmp("id:", line, 3) == 0)
-      res = ParseId(state, line + 3);
+      ParseId(state, line + 3);
     else if (strncmp("timestamp:", line, 10) == 0)
-      res = ParseTimestamp(state, line + 10);
+      ParseTimestamp(state, line + 10);
     else if (strncmp("palette:", line, 8) == 0
          ||  strncmp("size:", line, 5) == 0
          ||  strncmp("org:", line, 4) == 0
@@ -112,7 +97,7 @@ bool CDVDDemuxVobsub::Open(const std::string& filename, int source, const std::s
          ||  strncmp("alpha:", line, 6) == 0
          ||  strncmp("fadein/out:", line, 11) == 0
          ||  strncmp("forced subs:", line, 12) == 0)
-      res = ParseExtra(state, line);
+      ParseExtra(state, line);
     else
       continue;
   }
@@ -131,9 +116,10 @@ bool CDVDDemuxVobsub::Open(const std::string& filename, int source, const std::s
   return true;
 }
 
-void CDVDDemuxVobsub::Reset()
+bool CDVDDemuxVobsub::Reset()
 {
   Flush();
+  return true;
 }
 
 void CDVDDemuxVobsub::Flush()
@@ -141,7 +127,7 @@ void CDVDDemuxVobsub::Flush()
   m_Demuxer->Flush();
 }
 
-bool CDVDDemuxVobsub::SeekTime(int time, bool backwords, double* startpts)
+bool CDVDDemuxVobsub::SeekTime(double time, bool backwards, double* startpts)
 {
   double pts = DVD_MSEC_TO_TIME(time);
   m_Timestamp = m_Timestamps.begin();
@@ -210,8 +196,7 @@ bool CDVDDemuxVobsub::ParseId(SState& state, char* line)
   std::unique_ptr<CStream> stream(new CStream(this));
 
   while(*line == ' ') line++;
-  strncpy(stream->language, line, 2);
-  stream->language[2] = '\0';
+  stream->language = std::string(line, 2);
   line+=2;
 
   while(*line == ' ' || *line == ',') line++;
@@ -227,6 +212,7 @@ bool CDVDDemuxVobsub::ParseId(SState& state, char* line)
   stream->codec = AV_CODEC_ID_DVD_SUBTITLE;
   stream->uniqueId = m_Streams.size();
   stream->source = m_source;
+  stream->demuxerId = m_demuxerId;
 
   state.id = stream->uniqueId;
   m_Streams.push_back(stream.release());

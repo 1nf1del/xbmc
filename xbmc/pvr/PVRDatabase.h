@@ -1,36 +1,24 @@
-#pragma once
 /*
- *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
+#pragma once
+
+#include <map>
 #include <vector>
 
 #include "dbwrappers/Database.h"
-#include "utils/log.h"
+#include "threads/CriticalSection.h"
 
-#include "pvr/PVRManager.h"
+#include "pvr/PVRTypes.h"
 
 namespace PVR
 {
   class CPVRChannelGroup;
-  class CPVRChannelGroupInternal;
-  class CPVRChannelsContainer;
   class CPVRChannel;
   class CPVRChannelGroups;
   class CPVRClient;
@@ -43,26 +31,61 @@ namespace PVR
     /*!
      * @brief Create a new instance of the PVR database.
      */
-    CPVRDatabase(void) {};
-    virtual ~CPVRDatabase(void) {};
+    CPVRDatabase(void) = default;
+    ~CPVRDatabase(void) override = default;
 
     /*!
      * @brief Open the database.
      * @return True if it was opened successfully, false otherwise.
      */
-    virtual bool Open();
+    bool Open() override;
+
+    /*!
+     * @brief Close the database.
+     */
+    void Close() override;
 
     /*!
      * @brief Get the minimal database version that is required to operate correctly.
      * @return The minimal database version.
      */
-    virtual int GetSchemaVersion() const { return 29; };
+    int GetSchemaVersion() const override { return 32; }
 
     /*!
      * @brief Get the default sqlite database filename.
      * @return The default filename.
      */
-    const char *GetBaseDBName() const { return "TV"; };
+    const char *GetBaseDBName() const override { return "TV"; }
+
+    /*! @name Client methods */
+    //@{
+
+    /*!
+     * @brief Remove all client entries from the database.
+     * @return True if all client entries were removed, false otherwise.
+     */
+    bool DeleteClients();
+
+    /*!
+     * @brief Add or update a client entry in the database
+     * @param client The client to persist.
+     * @return True when persisted, false otherwise.
+     */
+    bool Persist(const CPVRClient &client);
+
+    /*!
+     * @brief Remove a client entry from the database
+     * @param client The client to remove.
+     * @return True if the client was removed, false otherwise.
+     */
+    bool Delete(const CPVRClient &client);
+
+    /*!
+     * @brief Get the priority for a given client from the database.
+     * @param client The client.
+     * @return The priority.
+     */
+    int GetPriority(const CPVRClient &client);
 
     /*! @name Channel methods */
     //@{
@@ -76,9 +99,10 @@ namespace PVR
     /*!
      * @brief Add or update a channel entry in the database
      * @param channel The channel to persist.
+     * @param bCommit queue only or queue and commit
      * @return True when persisted or queued, false otherwise.
      */
-    bool Persist(CPVRChannel &channel);
+    bool Persist(CPVRChannel &channel, bool bCommit);
 
     /*!
      * @brief Remove a channel entry from the database
@@ -90,9 +114,10 @@ namespace PVR
     /*!
      * @brief Get the list of channels from the database
      * @param results The channel group to store the results in.
+     * @param bCompressDB Compress the DB after getting the list
      * @return The amount of channels that were added.
      */
-    int Get(CPVRChannelGroupInternal &results);
+    int Get(CPVRChannelGroup &results, bool bCompressDB);
 
     //@}
 
@@ -122,9 +147,10 @@ namespace PVR
     /*!
      * @brief Add the group members to a group.
      * @param group The group to get the channels for.
+     * @param allGroup The "all channels group" matching param group's 'IsRadio' property.
      * @return The amount of channels that were added.
      */
-    int Get(CPVRChannelGroup &group);
+    int Get(CPVRChannelGroup &group, const CPVRChannelGroup &allGroup);
 
     /*!
      * @brief Add or update a channel group entry in the database.
@@ -163,41 +189,28 @@ namespace PVR
     /*!
      * @brief Create the PVR database tables.
      */
-    void CreateTables();
-    void CreateAnalytics();
+    void CreateTables() override;
+    void CreateAnalytics() override;
+    /*!
+     * @brief Update an old version of the database.
+     * @param version The version to update the database from.
+     */
+    void UpdateTables(int version) override;
+    int GetMinSchemaVersion() const override { return 11; }
 
     bool DeleteChannelsFromGroup(const CPVRChannelGroup &group, const std::vector<int> &channelsToDelete);
 
     bool GetCurrentGroupMembers(const CPVRChannelGroup &group, std::vector<int> &members);
     bool RemoveStaleChannelsFromGroup(const CPVRChannelGroup &group);
 
-    /*!
-     * @brief Update an old version of the database.
-     * @param version The version to update the database from.
-     */
-    void UpdateTables(int version);
-    virtual int GetMinSchemaVersion() const { return 11; }
-
     bool PersistGroupMembers(const CPVRChannelGroup &group);
 
     bool PersistChannels(CPVRChannelGroup &group);
 
     bool RemoveChannelsFromGroup(const CPVRChannelGroup &group);
+
+    int GetClientIdByChannelId(int iChannelId);
+
+    CCriticalSection m_critSection;
   };
-
-  /*!
-   * @brief Try to open the PVR database.
-   * @return The opened database or NULL if the database failed to open.
-   */
-  inline CPVRDatabase *GetPVRDatabase(void)
-  {
-    CPVRDatabase *database = g_PVRManager.GetTVDatabase();
-    if (!database || !database->IsOpen())
-    {
-      CLog::Log(LOGERROR, "PVR - failed to open the database");
-      database = NULL;
-    }
-
-    return database;
-  }
 }

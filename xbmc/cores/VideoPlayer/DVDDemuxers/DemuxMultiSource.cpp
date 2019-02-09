@@ -1,24 +1,12 @@
 /*
- *      Copyright (C) 2005-2015 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#include "DVDClock.h"
+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
 #include "DemuxMultiSource.h"
 #include "DVDDemuxUtils.h"
 #include "DVDFactoryDemuxer.h"
@@ -27,9 +15,7 @@
 #include "Util.h"
 
 
-CDemuxMultiSource::CDemuxMultiSource()
-{
-}
+CDemuxMultiSource::CDemuxMultiSource() = default;
 
 CDemuxMultiSource::~CDemuxMultiSource()
 {
@@ -127,12 +113,12 @@ int CDemuxMultiSource::GetStreamLength()
   return length;
 }
 
-bool CDemuxMultiSource::Open(CDVDInputStream* pInput)
+bool CDemuxMultiSource::Open(std::shared_ptr<CDVDInputStream> pInput)
 {
   if (!pInput)
     return false;
 
-  m_pInput = dynamic_cast<InputStreamMultiStreams*>(pInput);
+  m_pInput = std::dynamic_pointer_cast<InputStreamMultiStreams>(pInput);
 
   if (!m_pInput)
     return false;
@@ -140,7 +126,7 @@ bool CDemuxMultiSource::Open(CDVDInputStream* pInput)
   auto iter = m_pInput->m_InputStreams.begin();
   while (iter != m_pInput->m_InputStreams.end())
   {
-    DemuxPtr demuxer = DemuxPtr(CDVDFactoryDemuxer::CreateDemuxer(iter->get()));
+    DemuxPtr demuxer = DemuxPtr(CDVDFactoryDemuxer::CreateDemuxer((*iter)));
     if (!demuxer)
     {
       iter = m_pInput->m_InputStreams.erase(iter);
@@ -151,17 +137,22 @@ bool CDemuxMultiSource::Open(CDVDInputStream* pInput)
 
       m_demuxerMap[demuxer->GetDemuxerId()] = demuxer;
       m_DemuxerToInputStreamMap[demuxer] = *iter;
-      m_demuxerQueue.push(std::make_pair((double)DVD_NOPTS_VALUE, demuxer));
+      m_demuxerQueue.push(std::make_pair(-1.0, demuxer));
       ++iter;
     }
   }
   return !m_demuxerMap.empty();
 }
 
-void CDemuxMultiSource::Reset()
+bool CDemuxMultiSource::Reset()
 {
+  bool ret = true;
   for (auto& iter : m_demuxerMap)
-    iter.second->Reset();
+  {
+    if (!iter.second->Reset())
+      ret = false;
+  }
+  return ret;
 }
 
 DemuxPacket* CDemuxMultiSource::Read()
@@ -196,14 +187,14 @@ DemuxPacket* CDemuxMultiSource::Read()
           __FUNCTION__, CURL::GetRedacted(currentDemuxer->GetFileName()).c_str());
       }
       else    //maybe add an error counter?
-        m_demuxerQueue.push(std::make_pair((double)DVD_NOPTS_VALUE, currentDemuxer));
+        m_demuxerQueue.push(std::make_pair(-1.0, currentDemuxer));
     }
   }
 
   return packet;
 }
 
-bool CDemuxMultiSource::SeekTime(int time, bool backwords, double* startpts)
+bool CDemuxMultiSource::SeekTime(double time, bool backwards, double* startpts)
 {
   DemuxQueue demuxerQueue = DemuxQueue();
   bool ret = false;
@@ -212,12 +203,12 @@ bool CDemuxMultiSource::SeekTime(int time, bool backwords, double* startpts)
     if (iter.second->SeekTime(time, false, startpts))
     {
       demuxerQueue.push(std::make_pair(*startpts, iter.second));
-      CLog::Log(LOGDEBUG, "%s - starting demuxer from: %d", __FUNCTION__, time);
+      CLog::Log(LOGDEBUG, "%s - starting demuxer from: %f", __FUNCTION__, time);
       ret = true;
     }
     else
     {
-      CLog::Log(LOGDEBUG, "%s - failed to start demuxing from: %d", __FUNCTION__, time);
+      CLog::Log(LOGDEBUG, "%s - failed to start demuxing from: %f", __FUNCTION__, time);
     }
   }
   m_demuxerQueue = demuxerQueue;
@@ -232,20 +223,13 @@ void CDemuxMultiSource::SetMissingStreamDetails(DemuxPtr demuxer)
   {
     ExternalStreamInfo info = CUtil::GetExternalStreamDetailsFromFilename(baseFileName, fileName);
 
-    if (stream->flags == CDemuxStream::FLAG_NONE)
+    if (stream->flags == StreamFlags::FLAG_NONE)
     {
-      stream->flags = static_cast<CDemuxStream::EFlags>(info.flag);
+      stream->flags = static_cast<StreamFlags>(info.flag);
     }
-    if (stream->language[0] == '\0')
+    if (stream->language.empty())
     {
-      size_t len = info.language.size();
-      for (size_t i = 0; i < 3; ++i)
-      {
-        if (i < len)
-        {
-          stream->language[i] = info.language.at(i);
-        }
-      }
+      stream->language = info.language;
     }
   }
 }

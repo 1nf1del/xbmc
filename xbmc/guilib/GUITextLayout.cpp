@@ -1,25 +1,14 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "GUITextLayout.h"
 #include "GUIFont.h"
+#include "GUIComponent.h"
 #include "GUIControl.h"
 #include "GUIColorManager.h"
 #include "utils/CharsetConverter.h"
@@ -41,7 +30,7 @@ std::string CGUIString::GetAsString() const
 
 CGUITextLayout::CGUITextLayout(CGUIFont *font, bool wrap, float fHeight, CGUIFont *borderFont)
 {
-  m_font = font;
+  m_varFont = m_font = font;
   m_borderFont = borderFont;
   m_textColor = 0;
   m_wrap = wrap;
@@ -56,7 +45,7 @@ void CGUITextLayout::SetWrap(bool bWrap)
   m_wrap = bWrap;
 }
 
-void CGUITextLayout::Render(float x, float y, float angle, color_t color, color_t shadowColor, uint32_t alignment, float maxWidth, bool solid)
+void CGUITextLayout::Render(float x, float y, float angle, UTILS::Color color, UTILS::Color shadowColor, uint32_t alignment, float maxWidth, bool solid)
 {
   if (!m_font)
     return;
@@ -69,7 +58,7 @@ void CGUITextLayout::Render(float x, float y, float angle, color_t color, color_
   if (angle)
   {
     static const float degrees_to_radians = 0.01745329252f;
-    g_graphicsContext.AddTransform(TransformMatrix::CreateZRotation(angle * degrees_to_radians, x, y, g_graphicsContext.GetScalingPixelRatio()));
+    CServiceBroker::GetWinSystem()->GetGfxContext().AddTransform(TransformMatrix::CreateZRotation(angle * degrees_to_radians, x, y, CServiceBroker::GetWinSystem()->GetGfxContext().GetScalingPixelRatio()));
   }
   // center our text vertically
   if (alignment & XBFONT_CENTER_Y)
@@ -92,7 +81,7 @@ void CGUITextLayout::Render(float x, float y, float angle, color_t color, color_
   }
   m_font->End();
   if (angle)
-    g_graphicsContext.RemoveTransform();
+    CServiceBroker::GetWinSystem()->GetGfxContext().RemoveTransform();
 }
 
 bool CGUITextLayout::UpdateScrollinfo(CScrollInfo &scrollInfo)
@@ -106,7 +95,7 @@ bool CGUITextLayout::UpdateScrollinfo(CScrollInfo &scrollInfo)
 }
 
 
-void CGUITextLayout::RenderScrolling(float x, float y, float angle, color_t color, color_t shadowColor, uint32_t alignment, float maxWidth, const CScrollInfo &scrollInfo)
+void CGUITextLayout::RenderScrolling(float x, float y, float angle, UTILS::Color color, UTILS::Color shadowColor, uint32_t alignment, float maxWidth, const CScrollInfo &scrollInfo)
 {
   if (!m_font)
     return;
@@ -119,7 +108,7 @@ void CGUITextLayout::RenderScrolling(float x, float y, float angle, color_t colo
   if (angle)
   {
     static const float degrees_to_radians = 0.01745329252f;
-    g_graphicsContext.AddTransform(TransformMatrix::CreateZRotation(angle * degrees_to_radians, x, y, g_graphicsContext.GetScalingPixelRatio()));
+    CServiceBroker::GetWinSystem()->GetGfxContext().AddTransform(TransformMatrix::CreateZRotation(angle * degrees_to_radians, x, y, CServiceBroker::GetWinSystem()->GetGfxContext().GetScalingPixelRatio()));
   }
   // center our text vertically
   if (alignment & XBFONT_CENTER_Y)
@@ -142,16 +131,16 @@ void CGUITextLayout::RenderScrolling(float x, float y, float angle, color_t colo
   }
   m_font->End();
   if (angle)
-    g_graphicsContext.RemoveTransform();
+    CServiceBroker::GetWinSystem()->GetGfxContext().RemoveTransform();
 }
 
-void CGUITextLayout::RenderOutline(float x, float y, color_t color, color_t outlineColor, uint32_t alignment, float maxWidth)
+void CGUITextLayout::RenderOutline(float x, float y, UTILS::Color color, UTILS::Color outlineColor, uint32_t alignment, float maxWidth)
 {
   if (!m_font)
     return;
 
   // set the outline color
-  vecColors outlineColors;
+  std::vector<UTILS::Color> outlineColors;
   if (m_colors.size())
     outlineColors.push_back(outlineColor);
 
@@ -240,14 +229,14 @@ void CGUITextLayout::UpdateCommon(const std::wstring &text, float maxWidth, bool
 {
   // parse the text for style information
   vecText parsedText;
-  vecColors colors;
+  std::vector<UTILS::Color> colors;
   ParseText(text, m_font ? m_font->GetStyle() : 0, m_textColor, colors, parsedText);
 
   // and update
   UpdateStyled(parsedText, colors, maxWidth, forceLTRReadingOrder);
 }
 
-void CGUITextLayout::UpdateStyled(const vecText &text, const vecColors &colors, float maxWidth, bool forceLTRReadingOrder)
+void CGUITextLayout::UpdateStyled(const vecText &text, const std::vector<UTILS::Color> &colors, float maxWidth, bool forceLTRReadingOrder)
 {
   // empty out our previous string
   m_lines.clear();
@@ -307,7 +296,7 @@ void CGUITextLayout::BidiTransform(std::vector<CGUIString> &lines, bool forceLTR
         flippedText.push_back(sectionStyle | sectionFlipped[j]);
     }
 
-    // replace the original line with the proccessed one
+    // replace the original line with the processed one
     lines[i] = CGUIString(flippedText.begin(), flippedText.end(), line.m_carriageReturn);
   }
 }
@@ -328,7 +317,7 @@ void CGUITextLayout::Filter(std::string &text)
 {
   std::wstring utf16;
   g_charsetConverter.utf8ToW(text, utf16, false);
-  vecColors colors;
+  std::vector<UTILS::Color> colors;
   vecText parsedText;
   ParseText(utf16, 0, 0xffffffff, colors, parsedText);
   utf16.clear();
@@ -337,7 +326,7 @@ void CGUITextLayout::Filter(std::string &text)
   g_charsetConverter.wToUTF8(utf16, text);
 }
 
-void CGUITextLayout::ParseText(const std::wstring &text, uint32_t defaultStyle, color_t defaultColor, vecColors &colors, vecText &parsedText)
+void CGUITextLayout::ParseText(const std::wstring &text, uint32_t defaultStyle, UTILS::Color defaultColor, std::vector<UTILS::Color> &colors, vecText &parsedText)
 {
   // run through the string, searching for:
   // [B] or [/B] -> toggle bold on and off
@@ -346,10 +335,10 @@ void CGUITextLayout::ParseText(const std::wstring &text, uint32_t defaultStyle, 
   // [CAPS <option>] or [/CAPS] -> toggle capatilization on and off
 
   uint32_t currentStyle = defaultStyle; // start with the default font's style
-  color_t currentColor = 0;
+  UTILS::Color currentColor = 0;
 
   colors.push_back(defaultColor);
-  std::stack<color_t> colorStack;
+  std::stack<UTILS::Color> colorStack;
   colorStack.push(0);
 
   // these aren't independent, but that's probably not too much of an issue
@@ -361,7 +350,7 @@ void CGUITextLayout::ParseText(const std::wstring &text, uint32_t defaultStyle, 
   while (pos != std::string::npos && pos + 1 < text.size())
   {
     uint32_t newStyle = 0;
-    color_t newColor = currentColor;
+    UTILS::Color newColor = currentColor;
     bool colorTagChange = false;
     bool newLine = false;
     // have a [ - check if it's an ON or OFF switch
@@ -427,8 +416,8 @@ void CGUITextLayout::ParseText(const std::wstring &text, uint32_t defaultStyle, 
       {
         std::string t;
         g_charsetConverter.wToUTF8(text.substr(pos + 5, finish - pos - 5), t);
-        color_t color = g_colorManager.GetColor(t);
-        vecColors::const_iterator it = std::find(colors.begin(), colors.end(), color);
+        UTILS::Color color = CServiceBroker::GetGUI()->GetColorManager().GetColor(t);
+        const auto& it = std::find(colors.begin(), colors.end(), color);
         if (it == colors.end())
         { // create new color
           if (colors.size() <= 0xFF)
@@ -655,7 +644,7 @@ std::string CGUITextLayout::GetText() const
   return m_lastUtf8Text;
 }
 
-void CGUITextLayout::DrawText(CGUIFont *font, float x, float y, color_t color, color_t shadowColor, const std::string &text, uint32_t align)
+void CGUITextLayout::DrawText(CGUIFont *font, float x, float y, UTILS::Color color, UTILS::Color shadowColor, const std::string &text, uint32_t align)
 {
   if (!font) return;
   vecText utf32;

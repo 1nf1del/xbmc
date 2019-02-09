@@ -1,28 +1,18 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "AudioDecoder.h"
 #include "CodecFactory.h"
 #include "Application.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "FileItem.h"
+#include "ServiceBroker.h"
 #include "music/tags/MusicInfoTag.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
@@ -31,6 +21,7 @@
 CAudioDecoder::CAudioDecoder()
 {
   m_codec = NULL;
+  m_rawBuffer = nullptr;
 
   m_eof = false;
 
@@ -39,7 +30,7 @@ CAudioDecoder::CAudioDecoder()
 
   // output buffer (for transferring data from the Pcm Buffer to the rest of the audio chain)
   memset(&m_outputBuffer, 0, OUTPUT_SAMPLES * sizeof(float));
-  memset(&m_pcmInputBuffer, 0, INPUT_SIZE * sizeof(BYTE));
+  memset(&m_pcmInputBuffer, 0, INPUT_SIZE * sizeof(unsigned char));
   memset(&m_inputBuffer, 0, INPUT_SAMPLES * sizeof(float));
 
   m_rawBufferSize = 0;
@@ -74,20 +65,21 @@ bool CAudioDecoder::Create(const CFileItem &file, int64_t seekOffset)
   m_eof = false;
 
   // get correct cache size
-  unsigned int filecache = CSettings::GetInstance().GetInt(CSettings::SETTING_CACHEAUDIO_INTERNET);
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  unsigned int filecache = settings->GetInt(CSettings::SETTING_CACHEAUDIO_INTERNET);
   if ( file.IsHD() )
-    filecache = CSettings::GetInstance().GetInt(CSettings::SETTING_CACHE_HARDDISK);
+    filecache = settings->GetInt(CSettings::SETTING_CACHE_HARDDISK);
   else if ( file.IsOnDVD() )
-    filecache = CSettings::GetInstance().GetInt(CSettings::SETTING_CACHEAUDIO_DVDROM);
+    filecache = settings->GetInt(CSettings::SETTING_CACHEAUDIO_DVDROM);
   else if ( file.IsOnLAN() )
-    filecache = CSettings::GetInstance().GetInt(CSettings::SETTING_CACHEAUDIO_LAN);
+    filecache = settings->GetInt(CSettings::SETTING_CACHEAUDIO_LAN);
 
   // create our codec
   m_codec=CodecFactory::CreateCodecDemux(file, filecache * 1024);
 
   if (!m_codec || !m_codec->Init(file, filecache * 1024))
   {
-    CLog::Log(LOGERROR, "CAudioDecoder: Unable to Init Codec while loading file %s", file.GetPath().c_str());
+    CLog::Log(LOGERROR, "CAudioDecoder: Unable to Init Codec while loading file %s", file.GetDynPath().c_str());
     Destroy();
     return false;
   }
@@ -203,7 +195,7 @@ void *CAudioDecoder::GetData(unsigned int samples)
     CLog::Log(LOGERROR, "CAudioDecoder::GetData - More data was requested then we have space to buffer!");
     return NULL;
   }
-  
+
   if (size > m_pcmBuffer.getMaxReadSize())
   {
     CLog::Log(LOGWARNING, "CAudioDecoder::GetData() more bytes/samples (%i) requested than we have to give (%i)!", size, m_pcmBuffer.getMaxReadSize());
@@ -214,10 +206,10 @@ void *CAudioDecoder::GetData(unsigned int samples)
   {
     if (m_status == STATUS_ENDING && m_pcmBuffer.getMaxReadSize() == 0)
       m_status = STATUS_ENDED;
-    
+
     return m_outputBuffer;
   }
-  
+
   CLog::Log(LOGERROR, "CAudioDecoder::GetData() ReadBinary failed with %i samples", samples);
   return NULL;
 }
@@ -328,7 +320,7 @@ int CAudioDecoder::ReadSamples(int numsamples)
   return RET_SLEEP; // nothing to do
 }
 
-float CAudioDecoder::GetReplayGain()
+float CAudioDecoder::GetReplayGain(float &peakVal)
 {
 #define REPLAY_GAIN_DEFAULT_LEVEL 89.0f
   const ReplayGainSettings &replayGainSettings = g_application.GetReplayGainSettings();
@@ -337,45 +329,44 @@ float CAudioDecoder::GetReplayGain()
 
   // Compute amount of gain
   float replaydB = (float)replayGainSettings.iNoGainPreAmp;
-  float peak = 0.0f;
+  float peak = 1.0f;
   const ReplayGain& rgInfo = m_codec->m_tag.GetReplayGain();
   if (replayGainSettings.iType == ReplayGain::ALBUM)
   {
-    if (rgInfo.Get(ReplayGain::ALBUM).Valid())
+    if (rgInfo.Get(ReplayGain::ALBUM).HasGain())
     {
       replaydB = (float)replayGainSettings.iPreAmp + rgInfo.Get(ReplayGain::ALBUM).Gain();
-      peak = rgInfo.Get(ReplayGain::ALBUM).Peak();
+      if (rgInfo.Get(ReplayGain::ALBUM).HasPeak())
+        peak = rgInfo.Get(ReplayGain::ALBUM).Peak();
     }
-    else if (rgInfo.Get(ReplayGain::TRACK).Valid())
+    else if (rgInfo.Get(ReplayGain::TRACK).HasGain())
     {
       replaydB = (float)replayGainSettings.iPreAmp + rgInfo.Get(ReplayGain::TRACK).Gain();
-      peak = rgInfo.Get(ReplayGain::TRACK).Peak();
+      if (rgInfo.Get(ReplayGain::TRACK).HasPeak())
+        peak = rgInfo.Get(ReplayGain::TRACK).Peak();
     }
   }
   else if (replayGainSettings.iType == ReplayGain::TRACK)
   {
-    if (rgInfo.Get(ReplayGain::TRACK).Valid())
+    if (rgInfo.Get(ReplayGain::TRACK).HasGain())
     {
       replaydB = (float)replayGainSettings.iPreAmp + rgInfo.Get(ReplayGain::TRACK).Gain();
-      peak = rgInfo.Get(ReplayGain::TRACK).Peak();
+      if (rgInfo.Get(ReplayGain::TRACK).HasPeak())
+        peak = rgInfo.Get(ReplayGain::TRACK).Peak();
     }
-    else if (rgInfo.Get(ReplayGain::ALBUM).Valid())
+    else if (rgInfo.Get(ReplayGain::ALBUM).HasGain())
     {
       replaydB = (float)replayGainSettings.iPreAmp + rgInfo.Get(ReplayGain::ALBUM).Gain();
-      peak = rgInfo.Get(ReplayGain::ALBUM).Peak();
+      if (rgInfo.Get(ReplayGain::ALBUM).HasPeak())
+        peak = rgInfo.Get(ReplayGain::ALBUM).Peak();
     }
   }
   // convert to a gain type
   float replaygain = pow(10.0f, (replaydB - REPLAY_GAIN_DEFAULT_LEVEL)* 0.05f);
-  // check peaks
-  if (replayGainSettings.bAvoidClipping)
-  {
-    if (fabs(peak * replaygain) > 1.0f)
-      replaygain = 1.0f / fabs(peak);
-  }
 
   CLog::Log(LOGDEBUG, "AudioDecoder::GetReplayGain - Final Replaygain applied: %f, Track/Album Gain %f, Peak %f", replaygain, replaydB, peak);
 
+  peakVal = peak;
   return replaygain;
 }
 

@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2015 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2015-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "KeyboardLayoutManager.h"
@@ -25,6 +13,7 @@
 #include "FileItem.h"
 #include "filesystem/Directory.h"
 #include "URL.h"
+#include "settings/lib/Setting.h"
 #include "utils/log.h"
 #include "utils/XBMCTinyXML.h"
 
@@ -54,7 +43,7 @@ bool CKeyboardLayoutManager::Load(const std::string& path /* = "" */)
   }
 
   CFileItemList layouts;
-  if (!XFILE::CDirectory::GetDirectory(CURL(layoutDirectory), layouts, ".xml") || layouts.IsEmpty())
+  if (!XFILE::CDirectory::GetDirectory(CURL(layoutDirectory), layouts, ".xml", XFILE::DIR_FLAG_DEFAULTS) || layouts.IsEmpty())
   {
     CLog::Log(LOGWARNING, "CKeyboardLayoutManager: no keyboard layouts found in %s", layoutDirectory.c_str());
     return false;
@@ -127,7 +116,7 @@ bool CKeyboardLayoutManager::GetLayout(const std::string& name, CKeyboardLayout&
   return true;
 }
 
-void CKeyboardLayoutManager::SettingOptionsKeyboardLayoutsFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void* data)
+void CKeyboardLayoutManager::SettingOptionsKeyboardLayoutsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void* data)
 {
   for (KeyboardLayouts::const_iterator it = CKeyboardLayoutManager::GetInstance().m_layouts.begin(); it != CKeyboardLayoutManager::GetInstance().m_layouts.end(); ++it)
   {

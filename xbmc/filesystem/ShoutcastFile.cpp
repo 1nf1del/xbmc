@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 
@@ -23,7 +11,6 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#include "system.h"
 #include "ShoutcastFile.h"
 #include "guilib/GUIWindowManager.h"
 #include "URL.h"
@@ -83,7 +70,7 @@ bool CShoutcastFile::Open(const CURL& url)
       m_tag.SetGenre(m_file.GetHttpHeader().GetValue("ice-genre")); // icecast
     m_tag.SetLoaded(true);
   }
-  m_fileCharset = m_file.GetServerReportedCharset();
+  m_fileCharset = m_file.GetProperty(XFILE::FILE_PROPERTY_CONTENT_CHARSET);
   m_metaint = atoi(m_file.GetHttpHeader().GetValue("icy-metaint").c_str());
   if (!m_metaint)
     m_metaint = -1;
@@ -105,10 +92,10 @@ ssize_t CShoutcastFile::Read(void* lpBuf, size_t uiBufSize)
     unsigned char header;
     m_file.Read(&header,1);
     ReadTruncated(m_buffer, header*16);
-    if (ExtractTagInfo(m_buffer)
+    if ((ExtractTagInfo(m_buffer)
         // this is here to workaround issues caused by application posting callbacks to itself (3cf882d9)
         // the callback will set an empty tag in the info manager item, while we think we have ours set
-        || (m_file.GetPosition() < 10*m_metaint && !m_tagPos))
+        || m_file.GetPosition() < 10*m_metaint) && !m_tagPos)
     {
       m_tagPos = m_file.GetPosition();
       m_tagChange.Set();
@@ -153,7 +140,7 @@ bool CShoutcastFile::ExtractTagInfo(const char* buf)
   }
   else
     g_charsetConverter.unknownToUTF8(strBuffer);
-  
+
   bool result=false;
 
   std::wstring wBuffer, wConverted;
@@ -167,6 +154,7 @@ bool CShoutcastFile::ExtractTagInfo(const char* buf)
   if (reTitle.RegFind(strBuffer.c_str()) != -1)
   {
     std::string newtitle(reTitle.GetMatch(1));
+    CSingleLock lock(m_tagSection);
     result = (m_tag.GetTitle() != newtitle);
     m_tag.SetTitle(newtitle);
   }
@@ -204,6 +192,7 @@ void CShoutcastFile::Process()
     {
       while (!m_bStop && m_cacheReader->GetPosition() < m_tagPos)
         Sleep(20);
+      CSingleLock lock(m_tagSection);
       CApplicationMessenger::GetInstance().PostMsg(TMSG_UPDATE_CURRENT_ITEM, 1,-1, static_cast<void*>(new CFileItem(m_tag)));
       m_tagPos = 0;
     }

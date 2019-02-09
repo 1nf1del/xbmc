@@ -1,25 +1,12 @@
-#pragma once
 /*
- *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2010-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#if defined(HAVE_OMXLIB)
+#pragma once
 
 #include "OMXCore.h"
 #include "DVDStreamInfo.h"
@@ -28,9 +15,9 @@
 
 #include "OMXClock.h"
 
-#include "guilib/Geometry.h"
+#include "utils/Geometry.h"
 #include "DVDDemuxers/DVDDemux.h"
-#include "xbmc/settings/VideoSettings.h"
+#include "xbmc/cores/VideoSettings.h"
 #include "threads/CriticalSection.h"
 #include "xbmc/rendering/RenderSystem.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
@@ -68,7 +55,7 @@ public:
   int  Decode(uint8_t *pData, int iSize, double dts, double pts, bool &settings_changed);
   void Reset(void);
   void SetDropState(bool bDrop);
-  std::string GetDecoderName() { return m_video_codec_name; };
+  std::string GetDecoderName() const { return m_video_codec_name; };
   void SetVideoRect(const CRect& SrcRect, const CRect& DestRect, RENDER_STEREO_MODE video_mode, RENDER_STEREO_MODE display_mode, bool stereo_invert);
   int GetInputBufferSize();
   bool GetPlayerInfo(double &match, double &phase, double &pll);
@@ -91,10 +78,10 @@ protected:
   COMXCoreComponent *m_omx_clock;
   OMXClock           *m_av_clock;
 
-  COMXCoreTunel     m_omx_tunnel_decoder;
-  COMXCoreTunel     m_omx_tunnel_clock;
-  COMXCoreTunel     m_omx_tunnel_sched;
-  COMXCoreTunel     m_omx_tunnel_image_fx;
+  COMXCoreTunnel    m_omx_tunnel_decoder;
+  COMXCoreTunnel    m_omx_tunnel_clock;
+  COMXCoreTunnel    m_omx_tunnel_sched;
+  COMXCoreTunnel    m_omx_tunnel_image_fx;
   bool              m_is_open;
   bool              m_setStartTime;
 
@@ -111,10 +98,9 @@ protected:
   bool              m_failed_eos;
   OMX_DISPLAYTRANSFORMTYPE m_transform;
   bool              m_settings_changed;
+  bool              m_isPi1;
   CRenderManager&   m_renderManager;
   CProcessInfo&     m_processInfo;
   static bool NaluFormatStartCodes(enum AVCodecID codec, uint8_t *in_extradata, int in_extrasize);
   CCriticalSection m_critSection;
 };
-
-#endif

@@ -1,11 +1,11 @@
 # Kodi Media Center language file
 # Addon Name: Estuary
 # Addon id: skin.estuary
-# Addon Provider: phil65, Piers
+# Addon Provider: phil65, Ichabod Fletchman
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -64,6 +64,10 @@ msgctxt "#31053"
 msgid "Arial based"
 msgstr "بر اساس قلم Arial"
 
+msgctxt "#31067"
+msgid "Event log"
+msgstr "گزارش رخداد"
+
 msgctxt "#31069"
 msgid "Last Updated"
 msgstr "آخرین بروزرسانی"
@@ -72,21 +76,9 @@ msgctxt "#31072"
 msgid "Power Options"
 msgstr "گزینه های صرفه جویی در مصرف انرژی"
 
-msgctxt "#31081"
-msgid "Album info"
-msgstr "اطلاعات آلبوم"
-
 msgctxt "#31082"
 msgid "Lyrics add-on"
 msgstr "افزونه متن ترانه"
-
-msgctxt "#31085"
-msgid "Channel Group"
-msgstr "گروه کانال ها"
-
-msgctxt "#31091"
-msgid "Download subtitles"
-msgstr "دانلود زیر نویس ها"
 
 msgctxt "#31096"
 msgid "Local subtitle available"
@@ -96,6 +88,10 @@ msgctxt "#31100"
 msgid "Shift"
 msgstr "Shift"
 
-msgctxt "#31133"
-msgid "Hide"
-msgstr "مخفی کردن"
+msgctxt "#31106"
+msgid "Teletext"
+msgstr "تله تکست"
+
+msgctxt "#31165"
+msgid "Profile name"
+msgstr "نام پروفایل"

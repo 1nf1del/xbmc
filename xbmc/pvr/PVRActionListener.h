@@ -1,38 +1,39 @@
-#pragma once
-
 /*
- *      Copyright (C) 2005-2015 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#include "interfaces/IActionListener.h"
+#pragma once
 
-class CPVRActionListener : public IActionListener
+#include "interfaces/IActionListener.h"
+#include "settings/lib/ISettingCallback.h"
+
+namespace PVR
+{
+
+enum class ChannelSwitchMode;
+
+class CPVRActionListener : public IActionListener, public ISettingCallback
 {
 public:
+  CPVRActionListener();
+  ~CPVRActionListener() override;
 
-  static CPVRActionListener &GetInstance();
+  // IActionListener implementation
+  bool OnAction(const CAction &action) override;
 
-  bool OnAction(const CAction &action);
+  // ISettingCallback implementation
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
 
 private:
-  CPVRActionListener();
-  CPVRActionListener(const CPVRActionListener&);
-  CPVRActionListener& operator=(const CPVRActionListener&);
-  ~CPVRActionListener() {};
+  CPVRActionListener(const CPVRActionListener&) = delete;
+  CPVRActionListener& operator=(const CPVRActionListener&) = delete;
+
+  static ChannelSwitchMode GetChannelSwitchMode(int iAction);
 };
+
+} // namespace PVR

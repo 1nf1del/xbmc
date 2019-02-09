@@ -1,30 +1,16 @@
 /*
- *      Copyright (C) 2012-2015 Team Kodi
- *      http://kodi.tv
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Kodi; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#include "system.h"
 #include <list>
 #include "WinEventsIOS.h"
 #include "input/InputManager.h"
 #include "input/XBMC_vkeys.h"
-#include "Application.h"
-#include "windowing/WindowingFactory.h"
+#include "AppInboundProtocol.h"
 #include "threads/CriticalSection.h"
 #include "guilib/GUIWindowManager.h"
 #include "utils/log.h"
@@ -33,17 +19,11 @@ static CCriticalSection g_inputCond;
 
 static std::list<XBMC_Event> events;
 
-void CWinEventsIOS::MessagePush(XBMC_Event *newEvent)
-{
-  CSingleLock lock(g_inputCond);
-
-  events.push_back(*newEvent);
-}
-
 bool CWinEventsIOS::MessagePump()
 {
   bool ret = false;
-  
+  std::shared_ptr<CAppInboundProtocol> appPort = CServiceBroker::GetAppPort();
+
   // Do not always loop, only pump the initial queued count events. else if ui keep pushing
   // events the loop won't finish then it will block xbmc main message loop.
   for (size_t pumpEventCount = GetQueueSize(); pumpEventCount > 0; --pumpEventCount)
@@ -57,8 +37,10 @@ bool CWinEventsIOS::MessagePump()
         return ret;
       pumpEvent = events.front();
       events.pop_front();
-    }  
-    ret = g_application.OnEvent(pumpEvent);
+    }
+
+    if (appPort)
+      ret = appPort->OnEvent(pumpEvent);
   }
   return ret;
 }

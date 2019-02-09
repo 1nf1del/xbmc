@@ -7,10 +7,10 @@ endif
 NATIVE= m4-native gettext-native autoconf-native automake-native \
         libtool-native pkg-config-native yasm-native cmake-native \
         gas-preprocessor-native python27-native zlib-native \
-        pcre-native swig-native rpl-native \
+        pcre-native swig-native \
         libpng-native libjpeg-turbo-native liblzo2-native giflib-native \
         distribute-native distutilscross-native JsonSchemaBuilder TexturePacker \
-        google-breakpad-native
+        flatbuffers-native
 
 
 ifeq ($(OS),ios)
@@ -21,6 +21,17 @@ ifeq ($(OS),osx)
   NATIVE += xz-native tar-native
 endif
 
+ifeq ($(OS),linux)
+  ifeq ($(TARGET_PLATFORM),$(filter $(TARGET_PLATFORM),raspberry-pi aml gbm))
+    NATIVE += meson-native ninja-native python3-native
+  endif
+endif
+
+ifeq ($(TARGET_PLATFORM),wayland)
+  NATIVE += expat-native wayland-scanner-native waylandpp-scanner-native
+  EXPAT = expat-native
+endif
+
 .PHONY: $(NATIVE) native
 
 all: native
@@ -29,13 +40,19 @@ all: native
 # Dependency layout for parallel builds
 autoconf-native: m4-native
 automake-native: autoconf-native
+flatbuffers-native: cmake-native
 libtool-native: automake-native
 libpng-native: zlib-native
+meson-native: python3-native
+ninja-native: python3-native
 swig-native: pcre-native
 distribute-native: python27-native
 distutilscross-native: python27-native distribute-native
 tar-native: xz-native automake-native
 python27-native: zlib-native
+python3-native: $(EXPAT) zlib-native
+wayland-scanner-native: expat-native
+waylandpp-scanner-native: cmake-native
 
 #liblzo2 has stale packaged automake files that cause borked host/build detection
 liblzo2-native: automake-native

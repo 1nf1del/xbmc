@@ -1,24 +1,12 @@
-#pragma once
-
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
 
 #include <string>
 #include <vector>
@@ -27,7 +15,7 @@
 
 #include "FileItem.h"
 #include "URL.h"
-#include "guilib/Geometry.h"
+#include "utils/Geometry.h"
 
 enum DVDStreamType
 {
@@ -64,23 +52,37 @@ public:
 
   class IDisplayTime
   {
-    public:
-    virtual ~IDisplayTime() {};
+  public:
+    virtual ~IDisplayTime() = default;
     virtual int GetTotalTime() = 0;
     virtual int GetTime() = 0;
   };
 
+  class ITimes
+  {
+  public:
+    struct Times
+    {
+      time_t startTime;
+      double ptsStart;
+      double ptsBegin;
+      double ptsEnd;
+    };
+    virtual ~ITimes() = default;
+    virtual bool GetTimes(Times &times) = 0;
+  };
+
   class IPosTime
   {
-    public:
-    virtual ~IPosTime() {};
+  public:
+    virtual ~IPosTime() = default;
     virtual bool PosTime(int ms) = 0;
   };
 
   class IChapter
   {
-    public:
-    virtual ~IChapter() {};
+  public:
+    virtual ~IChapter() = default;
     virtual int  GetChapter() = 0;
     virtual int  GetChapterCount() = 0;
     virtual void GetChapterName(std::string& name, int ch=-1) = 0;
@@ -90,8 +92,8 @@ public:
 
   class IMenus
   {
-    public:
-    virtual ~IMenus() {};
+  public:
+    virtual ~IMenus() = default;
     virtual void ActivateButton() = 0;
     virtual void SelectButton(int iButton) = 0;
     virtual int  GetCurrentButton() = 0;
@@ -116,16 +118,17 @@ public:
 
   class IDemux
   {
-    public:
-    virtual ~IDemux() {}
+  public:
+    virtual ~IDemux() = default;
     virtual bool OpenDemux() = 0;
     virtual DemuxPacket* ReadDemux() = 0;
     virtual CDemuxStream* GetStream(int iStreamId) const = 0;
     virtual std::vector<CDemuxStream*> GetStreams() const = 0;
-    virtual void EnableStream(int iStreamId, bool enable) = 0;
+    virtual void EnableStream(int iStreamId, bool enable) {};
+    virtual bool OpenStream(int iStreamId) { return false; };
     virtual int GetNrOfStreams() const = 0;
     virtual void SetSpeed(int iSpeed) = 0;
-    virtual bool SeekTime(int time, bool backward = false, double* startpts = NULL) = 0;
+    virtual bool SeekTime(double time, bool backward = false, double* startpts = NULL) = 0;
     virtual void AbortDemux() = 0;
     virtual void FlushDemux() = 0;
     virtual void SetVideoResolution(int width, int height) {};
@@ -152,9 +155,8 @@ public:
   virtual ENextStream NextStream() { return NEXTSTREAM_NONE; }
   virtual void Abort() {}
   virtual int GetBlockSize() { return 0; }
-  virtual void ResetScanTimeout(unsigned int iTimeoutMs) { }
-  virtual bool CanSeek() { return true; }
-  virtual bool CanPause() { return true; }
+  virtual bool CanSeek() { return true; } //! @todo drop this
+  virtual bool CanPause() { return false; }
 
   /*! \brief Indicate expected read rate in bytes per second.
    *  This could be used to throttle caching rate. Should
@@ -163,7 +165,7 @@ public:
   virtual void SetReadRate(unsigned rate) {}
 
   /*! \brief Get the cache status
-   \return true when cache status was succesfully obtained
+   \return true when cache status was successfully obtained
    */
   virtual bool GetCacheStatus(XFILE::SCacheStatus *status) { return false; }
 
@@ -181,6 +183,7 @@ public:
   virtual IDemux* GetIDemux() { return nullptr; }
   virtual IPosTime* GetIPosTime() { return nullptr; }
   virtual IDisplayTime* GetIDisplayTime() { return nullptr; }
+  virtual ITimes* GetITimes() { return nullptr; }
 
   const CVariant &GetProperty(const std::string key){ return m_item.GetProperty(key); }
 

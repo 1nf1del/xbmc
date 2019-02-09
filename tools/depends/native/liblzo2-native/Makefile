@@ -1,7 +1,7 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile
 
 # lib name, version
 LIBNAME=lzo
@@ -14,8 +14,6 @@ CONFIGURE=cp -f $(CONFIG_SUB) $(CONFIG_GUESS) autoconf/; \
           ./configure --prefix=$(PREFIX) --enable-shared
 
 LIBDYLIB=$(PLATFORM)/src/.libs/lib$(LIBNAME)2.a
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

@@ -1,7 +1,7 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile
 
 # lib name, version
 # lib name, version
@@ -18,8 +18,6 @@ endif
 # configuration settings
 CONFIGURE=./configure --prefix=$(PREFIX) --enable-indirect-deps --with-pc-path=$(PC_PATH) --with-internal-glib
 LIBDYLIB=$(PLATFORM)/pkg-config
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

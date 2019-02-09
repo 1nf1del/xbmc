@@ -1,29 +1,19 @@
 /*
- *      Copyright (C) 2015 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2015-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include <algorithm>
 #include <string.h>
 
-#ifdef TARGET_WINDOWS
+#ifdef TARGET_WINDOWS_DESKTOP
 #ifdef NDEBUG
 #pragma comment(lib,"lzo2.lib")
+#elif defined _WIN64
+#pragma comment(lib, "lzo2d.lib")
 #else
 #pragma comment(lib, "lzo2-no_idb.lib")
 #endif
@@ -37,7 +27,6 @@
 #include "filesystem/XbtManager.h"
 #include "guilib/TextureBundleXBT.h"
 #include "guilib/XBTFReader.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 
 namespace XFILE
@@ -45,13 +34,9 @@ namespace XFILE
 
 CXbtFile::CXbtFile()
   : m_url(),
-    m_open(false),
     m_xbtfReader(nullptr),
     m_xbtfFile(),
     m_frameStartPositions(),
-    m_frameIndex(0),
-    m_positionWithinFrame(0),
-    m_positionTotal(0),
     m_unpackedFrames()
 { }
 
@@ -97,7 +82,7 @@ bool CXbtFile::Open(const CURL& url)
 void CXbtFile::Close()
 {
   for (const auto& unpackedFrame : m_unpackedFrames)
-    delete unpackedFrame;
+    delete [] unpackedFrame;
   m_unpackedFrames.clear();
 
   m_frameIndex = 0;

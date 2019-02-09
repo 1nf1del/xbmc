@@ -1,7 +1,7 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile fix_xattrs_configure.patch
 
 # app name, version
 APPNAME=tar
@@ -11,7 +11,7 @@ ARCHIVE=$(SOURCE).tar.gz
 
 ifeq ($(NATIVE_OS),osx)
 # https://openradar.appspot.com/radar?id=6160634819379200
-PLATFORM_CONFIGURE="gl_cv_func_getcwd_abort_bug=no"
+PLATFORM_CONFIGURE=gl_cv_func_getcwd_abort_bug=no ac_cv_func_futimens=no ac_cv_func_utimensat=no
 endif
 
 export LIBTOOL=builds/unix/libtool
@@ -21,7 +21,7 @@ CONFIGURE=./configure --prefix=$(PREFIX) \
   --disable-dependency-tracking ac_cv_func_fdopendir=no \
   $(PLATFORM_CONFIGURE)
 
-APP=$(SOURCE)/src/tar
+APP=$(PLATFORM)/src/tar
 APPBIN=$(PREFIX)/bin/tar
 
 all: .installed-$(PLATFORM)

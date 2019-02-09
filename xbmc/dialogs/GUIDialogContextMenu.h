@@ -1,24 +1,12 @@
-#pragma once
-
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
 
 #include <string>
 #include <utility>
@@ -87,23 +75,14 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_PLAY_OTHER,
                       CONTEXT_BUTTON_SET_ACTOR_THUMB,
                       CONTEXT_BUTTON_UNLINK_BOOKMARK,
-                      CONTEXT_BUTTON_ADD,
                       CONTEXT_BUTTON_ACTIVATE,
-                      CONTEXT_BUTTON_START_RECORD,
-                      CONTEXT_BUTTON_ADD_TIMER,
-                      CONTEXT_BUTTON_STOP_RECORD,
-                      CONTEXT_BUTTON_EDIT_TIMER,
-                      CONTEXT_BUTTON_EDIT_TIMER_RULE,
-                      CONTEXT_BUTTON_DELETE_TIMER,
-                      CONTEXT_BUTTON_DELETE_TIMER_RULE,
                       CONTEXT_BUTTON_GROUP_MANAGER,
                       CONTEXT_BUTTON_CHANNEL_MANAGER,
                       CONTEXT_BUTTON_SET_MOVIESET_ART,
                       CONTEXT_BUTTON_BEGIN,
                       CONTEXT_BUTTON_END,
                       CONTEXT_BUTTON_NOW,
-                      CONTEXT_BUTTON_FIND,
-                      CONTEXT_BUTTON_MENU_HOOKS,
+                      CONTEXT_BUTTON_DATE,
                       CONTEXT_BUTTON_PLAY_AND_QUEUE,
                       CONTEXT_BUTTON_PLAY_ONLY_THIS,
                       CONTEXT_BUTTON_UPDATE_EPG,
@@ -113,13 +92,12 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_MOVIESET_ADD_REMOVE_ITEMS,
                       CONTEXT_BUTTON_BROWSE_INTO,
                       CONTEXT_BUTTON_EDIT_SORTTITLE,
-                      CONTEXT_BUTTON_UNDELETE,
                       CONTEXT_BUTTON_DELETE_ALL,
                       CONTEXT_BUTTON_HELP,
-                      CONTEXT_BUTTON_ACTIVE_ADSP_SETTINGS,
+                      CONTEXT_BUTTON_PLAY_NEXT,
                     };
 
-class CContextButtons : public std::vector< std::pair<unsigned int, std::string> >
+class CContextButtons : public std::vector< std::pair<size_t, std::string> >
 {
 public:
   void Add(unsigned int, const std::string &label);
@@ -131,10 +109,10 @@ class CGUIDialogContextMenu :
 {
 public:
   CGUIDialogContextMenu(void);
-  virtual ~CGUIDialogContextMenu(void);
-  virtual bool OnMessage(CGUIMessage &message);
-  virtual bool OnAction(const CAction& action);
-  virtual void SetPosition(float posX, float posY);
+  ~CGUIDialogContextMenu(void) override;
+  bool OnMessage(CGUIMessage &message) override;
+  bool OnAction(const CAction& action) override;
+  void SetPosition(float posX, float posY) override;
 
   static bool SourcesMenu(const std::string &strType, const CFileItemPtr& item, float posX, float posY);
   static void SwitchMedia(const std::string& strType, const std::string& strPath);
@@ -158,11 +136,11 @@ protected:
    */
   void PositionAtCurrentFocus();
 
-  virtual float GetWidth() const;
-  virtual float GetHeight() const;
-  virtual void OnInitWindow();
-  virtual void OnWindowLoaded();
-  virtual void OnDeinitWindow(int nextWindowID);
+  float GetWidth() const override;
+  float GetHeight() const override;
+  void OnInitWindow() override;
+  void OnWindowLoaded() override;
+  void OnDeinitWindow(int nextWindowID) override;
   static std::string GetDefaultShareNameByType(const std::string &strType);
   static void SetDefault(const std::string &strType, const std::string &strDefault);
   static void ClearDefault(const std::string &strType);
@@ -174,4 +152,5 @@ private:
   float m_backgroundImageSize;
   int m_clickedButton;
   CContextButtons m_buttons;
+  const CGUIControl *m_backgroundImage = nullptr;
 };

@@ -1,29 +1,25 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
- *      http://kodi.tv
+ *  Copyright (C) 2014-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this Program; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "InputHandling.h"
+#include "input/joysticks/dialogs/GUIDialogNewJoystick.h"
+#include "input/joysticks/interfaces/IButtonMap.h"
 #include "input/joysticks/DriverPrimitive.h"
-#include "input/joysticks/IButtonMap.h"
 #include "input/joysticks/JoystickUtils.h"
+#include "utils/log.h"
 
+#include <array>
+#include <cmath>
+
+using namespace KODI;
 using namespace JOYSTICK;
+
+CGUIDialogNewJoystick* const CInputHandling::m_dialog = new CGUIDialogNewJoystick;
 
 CInputHandling::CInputHandling(IInputHandler* handler, IButtonMap* buttonMap)
  : m_handler(handler),
@@ -31,9 +27,7 @@ CInputHandling::CInputHandling(IInputHandler* handler, IButtonMap* buttonMap)
 {
 }
 
-CInputHandling::~CInputHandling(void)
-{
-}
+CInputHandling::~CInputHandling(void) = default;
 
 bool CInputHandling::OnButtonMotion(unsigned int buttonIndex, bool bPressed)
 {
@@ -52,15 +46,33 @@ bool CInputHandling::OnHatMotion(unsigned int hatIndex, HAT_STATE state)
   return bHandled;
 }
 
-bool CInputHandling::OnAxisMotion(unsigned int axisIndex, float position)
+bool CInputHandling::OnAxisMotion(unsigned int axisIndex, float position, int center, unsigned int range)
 {
   bool bHandled = false;
 
-  CDriverPrimitive positiveSemiaxis(axisIndex, SEMIAXIS_DIRECTION::POSITIVE);
-  CDriverPrimitive negativeSemiaxis(axisIndex, SEMIAXIS_DIRECTION::NEGATIVE);
+  if (center != 0)
+  {
+    float translatedPostion = std::min((position - center) / range, 1.0f);
 
-  bHandled |= OnAnalogMotion(positiveSemiaxis, position > 0.0f ? position : 0.0f);
-  bHandled |= OnAnalogMotion(negativeSemiaxis, position < 0.0f ? -position : 0.0f);
+    // Calculate the direction the trigger travels from the center point
+    SEMIAXIS_DIRECTION dir;
+    if (center > 0)
+      dir = SEMIAXIS_DIRECTION::NEGATIVE;
+    else
+      dir = SEMIAXIS_DIRECTION::POSITIVE;
+
+    CDriverPrimitive offsetSemiaxis(axisIndex, center, dir, range);
+
+    bHandled = OnAnalogMotion(offsetSemiaxis, translatedPostion);
+  }
+  else
+  {
+    CDriverPrimitive positiveSemiaxis(axisIndex, 0, SEMIAXIS_DIRECTION::POSITIVE, 1);
+    CDriverPrimitive negativeSemiaxis(axisIndex, 0, SEMIAXIS_DIRECTION::NEGATIVE, 1);
+
+    bHandled |= OnAnalogMotion(positiveSemiaxis, position > 0.0f ? position : 0.0f);
+    bHandled |= OnAnalogMotion(negativeSemiaxis, position < 0.0f ? -position : 0.0f);
+  }
 
   return bHandled;
 }
@@ -85,6 +97,16 @@ bool CInputHandling::OnDigitalMotion(const CDriverPrimitive& source, bool bPress
 
     if (feature)
       bHandled = feature->OnDigitalMotion(source, bPressed);
+  }
+  else if (bPressed)
+  {
+    // If button didn't resolve to a feature, check if the button map is empty
+    // and ask the user if they would like to start mapping the controller
+    if (m_buttonMap->IsEmpty())
+    {
+      CLog::Log(LOGDEBUG, "Empty button map detected for %s", m_buttonMap->ControllerID().c_str());
+      m_dialog->ShowAsync();
+    }
   }
 
   return bHandled;
@@ -133,6 +155,6 @@ CJoystickFeature* CInputHandling::CreateFeature(const FeatureName& featureName)
     default:
       break;
   }
-  
+
   return feature;
 }

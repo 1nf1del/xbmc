@@ -1,9 +1,12 @@
-set(SOURCES WinEventsWin32.cpp
+set(SOURCES VideoSyncD3D.cpp
+            WinEventsWin32.cpp
             WinSystemWin32.cpp
             WinSystemWin32DX.cpp)
 
-set(HEADERS WinEventsWin32.h
+set(HEADERS VideoSyncD3D.h
+            WinEventsWin32.h
             WinSystemWin32.h
-            WinSystemWin32DX.h)
+            WinSystemWin32DX.h
+            WinKeyMap.h)
 
 core_add_library(windowing_windows)

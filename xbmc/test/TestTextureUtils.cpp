@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "URL.h"
@@ -35,12 +23,12 @@ typedef struct
   const char *out;
 } TestFiles;
 
-const TestFiles test_files[] = {{ "/path/to/image/file.jpg", "", "", "image://%2Fpath%2Fto%2Fimage%2Ffile.jpg/" },
-                                { "/path/to/image/file.jpg", "", "size=thumb", "image://%2Fpath%2Fto%2Fimage%2Ffile.jpg/transform?size=thumb" },
-                                { "/path/to/video/file.mkv", "video", "", "image://video@%2Fpath%2Fto%2Fvideo%2Ffile.mkv/" },
-                                { "/path/to/music/file.mp3", "music", "", "image://music@%2Fpath%2Fto%2Fmusic%2Ffile.mp3/" },
-                                { "image://%2Fpath%2Fto%2Fimage%2Ffile.jpg/", "", "", "image://%2Fpath%2Fto%2Fimage%2Ffile.jpg/" },
-                                { "image://%2Fpath%2Fto%2Fimage%2Ffile.jpg/transform?size=thumb", "", "size=thumb", "image://%2Fpath%2Fto%2Fimage%2Ffile.jpg/transform?size=thumb" }};
+const TestFiles test_files[] = {{ "/path/to/image/file.jpg", "", "", "image://%2fpath%2fto%2fimage%2ffile.jpg/" },
+                                { "/path/to/image/file.jpg", "", "size=thumb", "image://%2fpath%2fto%2fimage%2ffile.jpg/transform?size=thumb" },
+                                { "/path/to/video/file.mkv", "video", "", "image://video@%2fpath%2fto%2fvideo%2ffile.mkv/" },
+                                { "/path/to/music/file.mp3", "music", "", "image://music@%2fpath%2fto%2fmusic%2ffile.mp3/" },
+                                { "image://%2fpath%2fto%2fimage%2ffile.jpg/", "", "", "image://%2fpath%2fto%2fimage%2ffile.jpg/" },
+                                { "image://%2fpath%2fto%2fimage%2ffile.jpg/transform?size=thumb", "", "size=thumb", "image://%2fpath%2fto%2fimage%2ffile.jpg/transform?size=thumb" }};
 
 
 class TestTextureUtils :

@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "ZeroconfMDNS.h"
@@ -35,8 +23,6 @@
 #include <mDnsEmbedded.h>
 #endif //HAS_MDNS_EMBEDDED
 
-#pragma comment(lib, "dnssd.lib")
-
 extern HWND g_hWnd;
 
 void CZeroconfMDNS::Process()
@@ -52,7 +38,7 @@ void CZeroconfMDNS::Process()
 }
 
 
-CZeroconfMDNS::CZeroconfMDNS()  : CThread("ZerocconfEmbedded")
+CZeroconfMDNS::CZeroconfMDNS()  : CThread("ZeroconfEmbedded")
 {
   m_service = NULL;
 #if defined(HAS_MDNS_EMBEDDED)
@@ -109,9 +95,13 @@ bool CZeroconfMDNS::doPublishService(const std::string& fcr_identifier,
       CLog::Log(LOGERROR, "ZeroconfMDNS: DNSServiceCreateConnection failed with error = %ld", (int) err);
       return false;
     }
+#ifdef TARGET_WINDOWS_STORE
+    CLog::Log(LOGERROR, "ZeroconfMDNS: WSAAsyncSelect not yet supported for TARGET_WINDOWS_STORE");
+#else
     err = WSAAsyncSelect( (SOCKET) DNSServiceRefSockFD( m_service ), g_hWnd, BONJOUR_EVENT, FD_READ | FD_CLOSE );
     if (err != kDNSServiceErr_NoError)
       CLog::Log(LOGERROR, "ZeroconfMDNS: WSAAsyncSelect failed with error = %ld", (int) err);
+#endif
   }
 #endif //!HAS_MDNS_EMBEDDED
 
@@ -208,7 +198,9 @@ void CZeroconfMDNS::doStop()
   }
   {
     CSingleLock lock(m_data_guard);
-#if defined(TARGET_WINDOWS)
+#if defined(TARGET_WINDOWS_STORE)
+    CLog::Log(LOGERROR, "ZeroconfMDNS: WSAAsyncSelect not yet supported for TARGET_WINDOWS_STORE");
+#else
     WSAAsyncSelect( (SOCKET) DNSServiceRefSockFD( m_service ), g_hWnd, BONJOUR_EVENT, 0 );
 #endif //TARGET_WINDOWS
 

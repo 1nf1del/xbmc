@@ -1,30 +1,19 @@
-#pragma once
 /*
- *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
+
+#include <vector>
 
 #include "threads/CriticalSection.h"
 #include "threads/SingleLock.h"
 
-#include "PVRChannelGroup.h"
-
-#include <vector>
+#include "pvr/channels/PVRChannelGroup.h"
 
 class CFileItem;
 typedef std::shared_ptr<CFileItem> CFileItemPtr;
@@ -41,7 +30,7 @@ namespace PVR
      * @brief Create a new group container.
      * @param bRadio True if this is a container for radio channels, false if it is for tv channels.
      */
-    CPVRChannelGroups(bool bRadio);
+    explicit CPVRChannelGroups(bool bRadio);
     virtual ~CPVRChannelGroups(void);
 
     /*!
@@ -58,7 +47,7 @@ namespace PVR
     /*!
      * @return Amount of groups in this container
      */
-    int Size(void) const { CSingleLock lock(m_critSection); return m_groups.size(); }
+    size_t Size(void) const { CSingleLock lock(m_critSection); return m_groups.size(); }
 
     /*!
      * @brief Update a group or add it if it's not in here yet.
@@ -95,12 +84,12 @@ namespace PVR
      * @param bExcludeHidden Whenever to exclude hidden channel groups.
      * @return A list of groups the channel is a member.
      */
-    std::vector<CPVRChannelGroupPtr> GetGroupsByChannel(const CPVRChannelPtr channel, bool bExcludeHidden = false) const;
+    std::vector<CPVRChannelGroupPtr> GetGroupsByChannel(const CPVRChannelPtr &channel, bool bExcludeHidden = false) const;
 
     /*!
      * @brief Get a group given it's name.
      * @param strName The name.
-     * @return The group or NULL if it wan't found.
+     * @return The group or NULL if it wasn't found.
      */
     CPVRChannelGroupPtr GetByName(const std::string &strName) const;
 
@@ -167,7 +156,7 @@ namespace PVR
      * @brief Change the selected group.
      * @param group The group to select.
      */
-    void SetSelectedGroup(CPVRChannelGroupPtr group);
+    void SetSelectedGroup(const CPVRChannelGroupPtr &group);
 
     /*!
      * @brief Add a group to this container.
@@ -221,6 +210,7 @@ namespace PVR
     bool                             m_bRadio;         /*!< true if this is a container for radio channels, false if it is for tv channels */
     CPVRChannelGroupPtr              m_selectedGroup;  /*!< the group that's currently selected in the UI */
     std::vector<CPVRChannelGroupPtr> m_groups;         /*!< the groups in this container */
-    CCriticalSection m_critSection;
+    mutable CCriticalSection m_critSection;
+    std::vector<int> m_failedClientsForChannelGroups;
   };
 }

@@ -1,17 +1,13 @@
 set(SOURCES CharsetConverter.cpp
+            Environment.cpp
             MessagePrinter.cpp
-            WinMain.cpp
-            crts_caller.cpp
             dxerr.cpp
+            Filesystem.cpp
             pch.cpp
-            stat_utf8.cpp
-            stdio_utf8.cpp
-            strverscmp.cpp
             WIN32Util.cpp
             WindowHelper.cpp)
 
 set(HEADERS CharsetConverter.h
-            crts_caller.h
             dirent.h
             dxerr.h
             IMMNotificationClient.h
@@ -20,7 +16,6 @@ set(HEADERS CharsetConverter.h
             netdb.h
             pch.h
             PlatformDefs.h
-            PlatformInclude.h
             resource.h
             unistd.h
             WIN32Util.h

@@ -1,27 +1,15 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "GUIDialogProgress.h"
 #include "guilib/GUIProgressControl.h"
 #include "Application.h"
-#include "guiinfo/GUIInfoLabels.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "threads/SingleLock.h"
@@ -34,10 +22,7 @@ CGUIDialogProgress::CGUIDialogProgress(void)
   Reset();
 }
 
-CGUIDialogProgress::~CGUIDialogProgress(void)
-{
-
-}
+CGUIDialogProgress::~CGUIDialogProgress(void) = default;
 
 void CGUIDialogProgress::Reset()
 {
@@ -46,7 +31,7 @@ void CGUIDialogProgress::Reset()
   m_iCurrent = 0;
   m_iMax = 0;
   m_percentage = 0;
-  m_showProgress = false;
+  m_showProgress = true;
   m_bCanCancel = true;
   SetInvalid();
 }
@@ -63,10 +48,10 @@ void CGUIDialogProgress::Open(const std::string &param /* = "" */)
   CLog::Log(LOGDEBUG, "DialogProgress::Open called %s", m_active ? "(already running)!" : "");
 
   {
-    CSingleLock lock(g_graphicsContext);
-    ShowProgressBar(false);
+    CSingleLock lock(CServiceBroker::GetWinSystem()->GetGfxContext());
+    ShowProgressBar(true);
   }
-  
+
   CGUIDialog::Open_Internal(false, param);
 
   while (m_active && IsAnimating(ANIM_TYPE_WINDOW_OPEN))
@@ -129,11 +114,11 @@ bool CGUIDialogProgress::OnBack(int actionID)
 void CGUIDialogProgress::OnWindowLoaded()
 {
   CGUIDialog::OnWindowLoaded();
-  const CGUIControl *control = GetControl(CONTROL_PROGRESS_BAR);
+  CGUIControl *control = GetControl(CONTROL_PROGRESS_BAR);
   if (control && control->GetControlType() == CGUIControl::GUICONTROL_PROGRESS)
   {
     // make sure we have the appropriate info set
-    CGUIProgressControl *progress = (CGUIProgressControl *)control;
+    CGUIProgressControl *progress = static_cast<CGUIProgressControl*>(control);
     if (!progress->GetInfo())
       progress->SetInfo(SYSTEM_PROGRESS_BAR);
   }
@@ -160,7 +145,8 @@ void CGUIDialogProgress::SetProgressAdvance(int nSteps/*=1*/)
   if (m_iCurrent>m_iMax)
     m_iCurrent=0;
 
-  SetPercentage((m_iCurrent*100)/m_iMax);
+  if (m_iMax > 0)
+    SetPercentage((m_iCurrent*100)/m_iMax);
 }
 
 bool CGUIDialogProgress::Abort()
@@ -173,6 +159,28 @@ void CGUIDialogProgress::ShowProgressBar(bool bOnOff)
   CSingleLock lock(m_section);
   m_showProgress = bOnOff;
   SetInvalid();
+}
+
+bool CGUIDialogProgress::Wait(int progresstime /*= 10*/)
+{
+  CEvent m_done;
+  while (!m_done.WaitMSec(progresstime) && m_active && !m_bCanceled)
+    Progress();
+
+  return !m_bCanceled;
+}
+
+bool CGUIDialogProgress::WaitOnEvent(CEvent& event)
+{
+  while (!event.WaitMSec(1))
+  {
+    if (m_bCanceled)
+      return false;
+
+    Progress();
+  }
+
+  return !m_bCanceled;
 }
 
 void CGUIDialogProgress::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)

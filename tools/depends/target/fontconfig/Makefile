@@ -3,7 +3,7 @@ DEPS= ../../Makefile.include lconv.patch fix-aarch64_atomics.patch Makefile
 
 # lib name, version
 LIBNAME=fontconfig
-VERSION=2.11.1
+VERSION=2.12.4
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.bz2
 
@@ -14,8 +14,6 @@ CONFIGURE=./configure --prefix=$(PREFIX) \
 
 LIBDYLIB=$(PLATFORM)/src/.libs/lib$(LIBNAME).a
 
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
-
 all: .installed-$(PLATFORM)
 
 $(TARBALLS_LOCATION)/$(ARCHIVE):
@@ -25,7 +23,7 @@ $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	rm -rf $(PLATFORM)/*; mkdir -p $(PLATFORM)
 	cd $(PLATFORM); $(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
 	cd $(PLATFORM); patch -p1 < ../lconv.patch
-	cd $(PLATFORM); patch -p1 < ../fix-aarch64_atomics.patch 
+	cd $(PLATFORM); patch -p1 < ../fix-aarch64_atomics.patch
 	cd $(PLATFORM); $(AUTORECONF) -vif
 	cd $(PLATFORM); $(CONFIGURE)
 

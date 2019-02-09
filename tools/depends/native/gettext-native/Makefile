@@ -1,7 +1,7 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile 01-gettext-tools-stpncpy.patch
 
 # lib name, version
 LIBNAME=gettext
@@ -21,8 +21,6 @@ CONFIGURE=./configure --prefix=$(PREFIX) \
     --disable-shared --disable-curses --disable-acl --disable-c++ --disable-nls
 
 LIBDYLIB=$(PLATFORM)/gettext-tools/src/.libs/libgettextsrc.a
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

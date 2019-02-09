@@ -1,7 +1,7 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile 01-darwin14-openat.patch
 
 APPNAME=fakeroot
 VERSION=macosx-v3.3
@@ -13,8 +13,6 @@ APP_BASE_URL=http://github.com/downloads/mackyle/fakeroot
 CONFIGURE=./configure --prefix=$(PREFIX) --disable-dependency-tracking --disable-static
 
 APP=$(PLATFORM)/$(APPNAME)
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

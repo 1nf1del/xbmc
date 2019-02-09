@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -60,6 +60,26 @@ msgctxt "#31016"
 msgid "Albums"
 msgstr "Albums "
 
+msgctxt "#31017"
+msgid "PVR info"
+msgstr "Infos enregistreur vidéo"
+
+msgctxt "#31018"
+msgid "Player process info"
+msgstr "Infos processus de lecture"
+
+msgctxt "#31019"
+msgid "Video decoder"
+msgstr "Décodeur vidéo"
+
+msgctxt "#31020"
+msgid "Pixel format"
+msgstr "Format de pixel"
+
+msgctxt "#31021"
+msgid "System memory usage"
+msgstr "Mémoire système utilisée "
+
 msgctxt "#31024"
 msgid "Page"
 msgstr "Page"
@@ -83,6 +103,10 @@ msgstr "AVANCE RAPIDE"
 msgctxt "#31045"
 msgid "REWIND"
 msgstr "RETOUR RAPIDE"
+
+msgctxt "#31046"
+msgid "Play speed"
+msgstr "Vitesse de lecture"
 
 msgctxt "#31049"
 msgid "End Time"
@@ -141,8 +165,8 @@ msgid "Data provider"
 msgstr "Fournisseur de données"
 
 msgctxt "#31309"
-msgid "Memory Used:"
-msgstr "Mémoire utilisée :"
+msgid "System Memory Used:"
+msgstr "Mémoire système utilisée :"
 
 msgctxt "#31320"
 msgid "Last Logged In"
@@ -186,11 +210,15 @@ msgstr "Configuration de l'affichage · Configuration de l'audio · Configuratio
 
 msgctxt "#31407"
 msgid "Manage your installed add-ons · Browse for and install add-ons from kodi.tv · Modify add-on settings"
-msgstr "Gestion des extensions installées · Parcours et installation des extensions depuis kodi.tv · Modification des paramètres des extensions"
+msgstr "Gestion des extensions installées · Parcours et installation des extensions depuis Kodi.tv · Modification des paramètres des extensions"
 
 msgctxt "#31408"
 msgid "Configure actions that can be used during playback · Configure how media content is played"
 msgstr "Configuration des actions pouvant être effectuées pendant la lecture · Configuration de la manière dont le média est lu"
+
+msgctxt "#31409"
+msgid "Configure library sources · Show the media lists display content · Configure how library lists are navigated"
+msgstr "Configuration des sources de la médiathèque · Configuration de la manière dont les listes de médias affichent le contenu · Configuration de la navigation des listes de la médiathèque"
 
 msgctxt "#31410"
 msgid "Configure skin · Configure region · Configure control · Configure screensaver · Configure master lock"
@@ -208,21 +236,17 @@ msgctxt "#31421"
 msgid "Select your Kodi user Profile[CR]to login and continue"
 msgstr "Sélectionner le profil utilisateur Kodi[CR]pour s'identifier et poursuivre"
 
-msgctxt "#31500"
-msgid "Home Menu Catagory Buttons"
-msgstr "Boutons des catégories du menu d'accueil"
+msgctxt "#31548"
+msgid "Home menu"
+msgstr "Menu d'accueil"
 
-msgctxt "#31501"
-msgid "Home Page Add-on Quick Links"
-msgstr "Liens rapides d'extensions de la page d'accueil"
-
-msgctxt "#31502"
-msgid "Miscellaneous Options"
-msgstr "Options diverses"
+msgctxt "#31549"
+msgid "Home Add-ons"
+msgstr "Extensions de l'accueil"
 
 msgctxt "#31550"
-msgid "Home Screen Weather Info and button"
-msgstr "Bouton et infos météo de l'écran d'accueil"
+msgid "Backgrounds"
+msgstr "Arrières-plans"
 
 msgctxt "#31551"
 msgid "Add-on Shortcut"

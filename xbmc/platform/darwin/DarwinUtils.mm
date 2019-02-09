@@ -1,33 +1,17 @@
 /*
- *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2010-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#define BOOL XBMC_BOOL 
-#include "system.h"
 #include "Application.h"
 #include "DllPaths.h"
 #include "GUIUserMessages.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "CompileInfo.h"
-
-#undef BOOL
 
 #if defined(TARGET_DARWIN)
 #if defined(TARGET_DARWIN_IOS)
@@ -45,18 +29,6 @@
 
 #import "AutoPool.h"
 #import "DarwinUtils.h"
-
-#ifndef NSAppKitVersionNumber10_5
-#define NSAppKitVersionNumber10_5 949
-#endif
-
-#ifndef NSAppKitVersionNumber10_6
-#define NSAppKitVersionNumber10_6 1038
-#endif
-
-#ifndef NSAppKitVersionNumber10_9
-#define NSAppKitVersionNumber10_9 1265
-#endif
 
 
 enum iosPlatform
@@ -77,11 +49,13 @@ enum iosPlatform
   iPadMiniGSMCDMA,
   iPadMiniWIFI,
   AppleTV2,
+  AppleTV4,
+  AppleTV4K,
   iPhone4,            //from here on list devices with retina support (e.x. mainscreen scale == 2.0)
   iPhone4CDMA,
   iPhone4S,
   iPhone5,
-  iPhone5GSMCDMA, 
+  iPhone5GSMCDMA,
   iPhone5CGSM,
   iPhone5CGlobal,
   iPhone5SGSM,
@@ -95,6 +69,8 @@ enum iosPlatform
   iPad4WIFI,
   iPad4,
   iPad4GSMCDMA,
+  iPad5Wifi,
+  iPad5Cellular,
   iPadAirWifi,
   iPadAirCellular,
   iPadAirTDLTE,
@@ -104,12 +80,24 @@ enum iosPlatform
   iPhone6s,
   iPhoneSE,
   iPhone7,
+  iPhone8,
+  iPhoneXR,
   iPadAir2Wifi,
   iPadAir2Cellular,
   iPadPro9_7InchWifi,
   iPadPro9_7InchCellular,
+  iPad6thGeneration9_7InchWifi,
+  iPad6thGeneration9_7InchCellular,
   iPadPro12_9InchWifi,
   iPadPro12_9InchCellular,
+  iPadPro2_12_9InchWifi,
+  iPadPro2_12_9InchCellular,
+  iPadPro3_12_9InchWifi,
+  iPadPro3_12_9InchCellular,
+  iPadPro_10_5InchWifi,
+  iPadPro_10_5InchCellular,
+  iPadPro11InchWifi,
+  iPadPro11InchCellular,
   iPadMini3Wifi,
   iPadMini3Cellular,
   iPadMini4Wifi,
@@ -117,6 +105,10 @@ enum iosPlatform
   iPhone6Plus,        //from here on list devices with retina support which have scale == 3.0
   iPhone6sPlus,
   iPhone7Plus,
+  iPhone8Plus,
+  iPhoneX,
+  iPhoneXS,
+  iPhoneXSMax,
 };
 
 // platform strings are based on http://theiphonewiki.com/wiki/Models
@@ -127,9 +119,9 @@ const char* CDarwinUtils::getIosPlatformString(void)
   {
 #if defined(TARGET_DARWIN_IOS)
     // Gets a string with the device model
-    size_t size;  
-    sysctlbyname("hw.machine", NULL, &size, NULL, 0);  
-    char *machine = new char[size];  
+    size_t size;
+    sysctlbyname("hw.machine", NULL, &size, NULL, 0);
+    char *machine = new char[size];
     if (sysctlbyname("hw.machine", machine, &size, NULL, 0) == 0 && machine[0])
       iOSPlatformString.assign(machine, size -1);
    else
@@ -151,13 +143,13 @@ enum iosPlatform getIosPlatform()
   if (eDev == iDeviceUnknown)
   {
     std::string devStr(CDarwinUtils::getIosPlatformString());
-    
+
     if (devStr == "iPhone1,1") eDev = iPhone2G;
     else if (devStr == "iPhone1,2") eDev = iPhone3G;
     else if (devStr == "iPhone2,1") eDev = iPhone3GS;
     else if (devStr == "iPhone3,1") eDev = iPhone4;
     else if (devStr == "iPhone3,2") eDev = iPhone4;
-    else if (devStr == "iPhone3,3") eDev = iPhone4CDMA;    
+    else if (devStr == "iPhone3,3") eDev = iPhone4CDMA;
     else if (devStr == "iPhone4,1") eDev = iPhone4S;
     else if (devStr == "iPhone5,1") eDev = iPhone5;
     else if (devStr == "iPhone5,2") eDev = iPhone5GSMCDMA;
@@ -174,6 +166,15 @@ enum iosPlatform getIosPlatform()
     else if (devStr == "iPhone9,2") eDev = iPhone7Plus;
     else if (devStr == "iPhone9,3") eDev = iPhone7;
     else if (devStr == "iPhone9,4") eDev = iPhone7Plus;
+    else if (devStr == "iPhone10,1") eDev = iPhone8;
+    else if (devStr == "iPhone10,2") eDev = iPhone8Plus;
+    else if (devStr == "iPhone10,3") eDev = iPhoneX;
+    else if (devStr == "iPhone10,4") eDev = iPhone8;
+    else if (devStr == "iPhone10,5") eDev = iPhone8Plus;
+    else if (devStr == "iPhone10,6") eDev = iPhoneX;
+    else if (devStr == "iPhone11,2") eDev = iPhoneXS;
+    else if (devStr == "iPhone11,6") eDev = iPhoneXSMax;
+    else if (devStr == "iPhone11,8") eDev = iPhoneXR;
     else if (devStr == "iPod1,1") eDev = iPodTouch1G;
     else if (devStr == "iPod2,1") eDev = iPodTouch2G;
     else if (devStr == "iPod3,1") eDev = iPodTouch3G;
@@ -212,54 +213,28 @@ enum iosPlatform getIosPlatform()
     else if (devStr == "iPad6,4") eDev = iPadPro9_7InchCellular;
     else if (devStr == "iPad6,7") eDev = iPadPro12_9InchWifi;
     else if (devStr == "iPad6,8") eDev = iPadPro12_9InchCellular;
+    else if (devStr == "iPad6,11") eDev = iPad5Wifi;
+    else if (devStr == "iPad6,12") eDev = iPad5Cellular;
+    else if (devStr == "iPad7,1") eDev = iPadPro2_12_9InchWifi;
+    else if (devStr == "iPad7,2") eDev = iPadPro2_12_9InchCellular;
+    else if (devStr == "iPad7,3") eDev = iPadPro_10_5InchWifi;
+    else if (devStr == "iPad7,4") eDev = iPadPro_10_5InchCellular;
+    else if (devStr == "iPad7,5") eDev = iPad6thGeneration9_7InchWifi;
+    else if (devStr == "iPad7,6") eDev = iPad6thGeneration9_7InchCellular;
+    else if (devStr == "iPad8,1") eDev = iPadPro11InchWifi;
+    else if (devStr == "iPad8,2") eDev = iPadPro11InchWifi;
+    else if (devStr == "iPad8,3") eDev = iPadPro11InchCellular;
+    else if (devStr == "iPad8,4") eDev = iPadPro11InchCellular;
+    else if (devStr == "iPad8,5") eDev = iPadPro3_12_9InchWifi;
+    else if (devStr == "iPad8,6") eDev = iPadPro3_12_9InchWifi;
+    else if (devStr == "iPad8,7") eDev = iPadPro3_12_9InchCellular;
+    else if (devStr == "iPad8,8") eDev = iPadPro3_12_9InchCellular;
     else if (devStr == "AppleTV2,1") eDev = AppleTV2;
+    else if (devStr == "AppleTV5,3") eDev = AppleTV4;
+    else if (devStr == "AppleTV6,2") eDev = AppleTV4K;
   }
 #endif
   return eDev;
-}
-
-bool CDarwinUtils::IsMavericks(void)
-{
-  static int isMavericks = -1;
-#if defined(TARGET_DARWIN_OSX)
-  // there is no NSAppKitVersionNumber10_9 out there anywhere
-  // so we detect mavericks by one of these newly added app nap
-  // methods - and fix the ugly mouse rect problem which was hitting
-  // us when mavericks came out
-  if (isMavericks == -1)
-  {
-    CLog::Log(LOGDEBUG, "Detected Mavericks...");
-    isMavericks = [NSProcessInfo instancesRespondToSelector:@selector(beginActivityWithOptions:reason:)] == TRUE ? 1 : 0;
-  }
-#endif
-  return isMavericks == 1;
-}
-
-bool CDarwinUtils::IsLion(void)  
-{  
-  static int isLion = -1;  
-#if defined(TARGET_DARWIN_OSX)  
-  if (isLion == -1)  
-  {  
-    double appKitVersion = floor(NSAppKitVersionNumber);  
-    // everything lower 10.8 is 10.7.x because 10.7 is deployment target...  
-    isLion = (appKitVersion < NSAppKitVersionNumber10_8) ? 1 : 0;  
-  }  
-#endif  
-  return isLion == 1;  
-}
-
-bool CDarwinUtils::IsSnowLeopard(void)
-{
-  static int isSnowLeopard = -1;
-#if defined(TARGET_DARWIN_OSX)
-  if (isSnowLeopard == -1)
-  {
-    double appKitVersion = floor(NSAppKitVersionNumber);
-    isSnowLeopard = (appKitVersion <= NSAppKitVersionNumber10_6 && appKitVersion > NSAppKitVersionNumber10_5) ? 1 : 0;
-  }
-#endif
-  return isSnowLeopard == 1;
 }
 
 bool CDarwinUtils::DeviceHasRetina(double &scale)
@@ -286,16 +261,6 @@ bool CDarwinUtils::DeviceHasRetina(double &scale)
   }
 
   return (platform >= iPhone4);
-}
-
-bool CDarwinUtils::DeviceHasLeakyVDA(void)
-{
-  static int hasLeakyVDA = -1;
-#if defined(TARGET_DARWIN_OSX)
-  if (hasLeakyVDA == -1)
-    hasLeakyVDA = NSAppKitVersionNumber <= NSAppKitVersionNumber10_9 ? 1 : 0;
-#endif
-  return hasLeakyVDA == 1;
 }
 
 const char *CDarwinUtils::GetOSReleaseString(void)
@@ -357,7 +322,7 @@ const char *CDarwinUtils::GetOSXVersionString(void)
     OSXVersionString.assign((const char*)[[[NSDictionary dictionaryWithContentsOfFile:
                          @"/System/Library/CoreServices/SystemVersion.plist"] objectForKey:@"ProductVersion"] UTF8String]);
   }
-  
+
   return OSXVersionString.c_str();
 #else
   return "0.0";
@@ -393,11 +358,11 @@ int  CDarwinUtils::GetFrameworkPath(bool forPython, char* path, size_t *pathsize
   if (pathname && strstr([pathname UTF8String], "Contents"))
   {
     strcpy(path, [pathname UTF8String]);
-    // ExectuablePath is <product>.app/Contents/MacOS/<executable>
+    // ExecutablePath is <product>.app/Contents/MacOS/<executable>
     char *lastSlash = strrchr(path, '/');
     if (lastSlash)
     {
-      *lastSlash = '\0';//remove /<executable>  
+      *lastSlash = '\0';//remove /<executable>
       lastSlash = strrchr(path, '/');
       if (lastSlash)
         *lastSlash = '\0';//remove /MacOS
@@ -440,22 +405,6 @@ int  CDarwinUtils::GetExecutablePath(char* path, size_t *pathsize)
   return 0;
 }
 
-const char* CDarwinUtils::GetUserHomeDirectory(void)
-{
-  static std::string appHomeFolder;
-  if (appHomeFolder.empty())
-  {
-#if defined(TARGET_DARWIN_IOS)
-    appHomeFolder = URIUtils::AddFileToFolder(CDarwinUtils::GetAppRootFolder(), CCompileInfo::GetAppName());
-#else
-    appHomeFolder = URIUtils::AddFileToFolder(getenv("HOME"), "Library/Application Support");
-    appHomeFolder = URIUtils::AddFileToFolder(appHomeFolder, CCompileInfo::GetAppName());
-#endif
-  }
-  
-  return appHomeFolder.c_str();
-}
-
 const char* CDarwinUtils::GetAppRootFolder(void)
 {
   static std::string rootFolder = "";
@@ -464,7 +413,7 @@ const char* CDarwinUtils::GetAppRootFolder(void)
     if (IsIosSandboxed())
     {
       // when we are sandbox make documents our root
-      // so that user can access everything he needs 
+      // so that user can access everything he needs
       // via itunes sharing
       rootFolder = "Documents";
     }
@@ -483,10 +432,10 @@ bool CDarwinUtils::IsIosSandboxed(void)
   {
     size_t path_size = 2*MAXPATHLEN;
     char     given_path[2*MAXPATHLEN];
-    int      result = -1; 
+    int      result = -1;
     ret = 0;
     memset(given_path, 0x0, path_size);
-    /* Get Application directory */  
+    /* Get Application directory */
     result = GetExecutablePath(given_path, &path_size);
     if (result == 0)
     {
@@ -501,6 +450,13 @@ bool CDarwinUtils::IsIosSandboxed(void)
       // we are also sandboxed if this is our bundle path
       if (strlen("/var/mobile/Containers/Bundle/") < path_size &&
         strncmp(given_path, "/var/mobile/Containers/Bundle/", strlen("/var/mobile/Containers/Bundle/")) == 0)
+      {
+        ret = 1;
+      }
+
+      // Some time after ios8, Apple decided to change this yet again
+      if (strlen("/var/containers/Bundle/") < path_size &&
+        strncmp(given_path, "/var/containers/Bundle/", strlen("/var/containers/Bundle/")) == 0)
       {
         ret = 1;
       }
@@ -542,7 +498,7 @@ int CDarwinUtils::BatteryLevel(void)
   CFRelease(powerSources);
   CFRelease(powerSourceInfo);
 #endif
-  return batteryLevel * 100;  
+  return batteryLevel * 100;
 }
 
 void CDarwinUtils::EnableOSScreenSaver(bool enable)
@@ -555,7 +511,7 @@ void CDarwinUtils::ResetSystemIdleTimer()
 
 }
 
-void CDarwinUtils::SetScheduling(int message)
+void CDarwinUtils::SetScheduling(bool realtime)
 {
   int policy;
   struct sched_param param;
@@ -566,14 +522,14 @@ void CDarwinUtils::SetScheduling(int message)
   policy = SCHED_OTHER;
   thread_extended_policy_data_t theFixedPolicy={true};
 
-  if (message == GUI_MSG_PLAYBACK_STARTED && g_application.m_pPlayer->IsPlayingVideo())
+  if (realtime)
   {
     policy = SCHED_RR;
     theFixedPolicy.timeshare = false;
   }
 
   thread_policy_set(pthread_mach_thread_np(this_pthread_self),
-    THREAD_EXTENDED_POLICY, 
+    THREAD_EXTENDED_POLICY,
     (thread_policy_t)&theFixedPolicy,
     THREAD_EXTENDED_POLICY_COUNT);
 
@@ -667,7 +623,7 @@ bool CDarwinUtils::IsAliasShortcut(const std::string& path, bool isdirectory)
 
 #if defined(TARGET_DARWIN_OSX)
   CCocoaAutoPool pool;
-  
+
   NSURL *nsUrl;
   if (isdirectory)
   {
@@ -681,7 +637,7 @@ bool CDarwinUtils::IsAliasShortcut(const std::string& path, bool isdirectory)
     NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
     nsUrl = [NSURL fileURLWithPath:nsPath isDirectory:FALSE];
   }
-  
+
   NSNumber* wasAliased = nil;
 
   if (nsUrl != nil)
@@ -702,7 +658,7 @@ void CDarwinUtils::TranslateAliasShortcut(std::string& path)
 #if defined(TARGET_DARWIN_OSX)
   NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
   NSURL *nsUrl = [NSURL fileURLWithPath:nsPath];
-  
+
   if (nsUrl != nil)
   {
     NSError *error = nil;
@@ -739,7 +695,7 @@ bool CDarwinUtils::CreateAliasShortcut(const std::string& fromPath, const std::s
   NSError *error = nil;
   NSData *bookmarkData = [toUrl bookmarkDataWithOptions: NSURLBookmarkCreationSuitableForBookmarkFile includingResourceValuesForKeys:nil relativeToURL:nil error:&error];
 
-  if(bookmarkData != nil && fromUrl != nil && toUrl != nil) 
+  if(bookmarkData != nil && fromUrl != nil && toUrl != nil)
   {
     if([NSURL writeBookmarkData:bookmarkData toURL:fromUrl options:NSURLBookmarkCreationSuitableForBookmarkFile error:&error])
     {

@@ -1,31 +1,26 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "GUIRSSControl.h"
+#include "ServiceBroker.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
+#include "utils/Color.h"
 #include "utils/RssManager.h"
 #include "utils/RssReader.h"
 #include "utils/StringUtils.h"
 
-CGUIRSSControl::CGUIRSSControl(int parentID, int controlID, float posX, float posY, float width, float height, const CLabelInfo& labelInfo, const CGUIInfoColor &channelColor, const CGUIInfoColor &headlineColor, std::string& strRSSTags)
+using namespace KODI::GUILIB;
+
+CGUIRSSControl::CGUIRSSControl(int parentID, int controlID, float posX, float posY, float width, float height,
+                               const CLabelInfo& labelInfo, const GUIINFO::CGUIInfoColor &channelColor,
+                               const GUIINFO::CGUIInfoColor &headlineColor, std::string& strRSSTags)
 : CGUIControl(parentID, controlID, posX, posY, width, height),
   m_strRSSTags(strRSSTags),
   m_label(labelInfo),
@@ -95,7 +90,7 @@ bool CGUIRSSControl::UpdateColors()
 void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
   bool dirty = false;
-  if (CSettings::GetInstance().GetBool(CSettings::SETTING_LOOKANDFEEL_ENABLERSSFEEDS) && CRssManager::GetInstance().IsActive())
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_LOOKANDFEEL_ENABLERSSFEEDS) && CRssManager::GetInstance().IsActive())
   {
     CSingleLock lock(m_criticalSection);
     // Create RSS background/worker thread if needed
@@ -156,12 +151,12 @@ void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyre
 void CGUIRSSControl::Render()
 {
   // only render the control if they are enabled
-  if (CSettings::GetInstance().GetBool(CSettings::SETTING_LOOKANDFEEL_ENABLERSSFEEDS) && CRssManager::GetInstance().IsActive())
+  if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_LOOKANDFEEL_ENABLERSSFEEDS) && CRssManager::GetInstance().IsActive())
   {
 
     if (m_label.font)
     {
-      vecColors colors;
+      std::vector<UTILS::Color> colors;
       colors.push_back(m_label.textColor);
       colors.push_back(m_headlineColor);
       colors.push_back(m_channelColor);

@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -44,6 +44,10 @@ msgctxt "#31009"
 msgid "Working..."
 msgstr "Arbejder..."
 
+msgctxt "#31011"
+msgid "Recent"
+msgstr "Nyligt"
+
 msgctxt "#31013"
 msgid "Movies"
 msgstr "Film"
@@ -55,6 +59,26 @@ msgstr "Afsnit"
 msgctxt "#31016"
 msgid "Albums"
 msgstr "Albummer"
+
+msgctxt "#31017"
+msgid "PVR info"
+msgstr "PVR-information"
+
+msgctxt "#31018"
+msgid "Player process info"
+msgstr "Procesinformation for afspilning"
+
+msgctxt "#31019"
+msgid "Video decoder"
+msgstr "Videodekoder"
+
+msgctxt "#31020"
+msgid "Pixel format"
+msgstr "Pixelformat"
+
+msgctxt "#31021"
+msgid "System memory usage"
+msgstr "Hukommelsesforbrug"
 
 msgctxt "#31024"
 msgid "Page"
@@ -68,6 +92,10 @@ msgctxt "#31038"
 msgid "Login"
 msgstr "Brugernavn"
 
+msgctxt "#31039"
+msgid "Updated:"
+msgstr "Opdateret:"
+
 msgctxt "#31044"
 msgid "FAST FORWARD"
 msgstr "SPOL FREM"
@@ -75,6 +103,10 @@ msgstr "SPOL FREM"
 msgctxt "#31045"
 msgid "REWIND"
 msgstr "SPOL TILBAGE"
+
+msgctxt "#31046"
+msgid "Play speed"
+msgstr "Afspilningshastighed"
 
 msgctxt "#31049"
 msgid "End Time"
@@ -90,7 +122,7 @@ msgstr "Sorter: Faldende"
 
 msgctxt "#31055"
 msgid "Open playlist"
-msgstr "Åbn afspilningsliste"
+msgstr "Åbn playliste"
 
 msgctxt "#31056"
 msgid "Save playlist"
@@ -98,7 +130,7 @@ msgstr "Gem afspilningsliste"
 
 msgctxt "#31057"
 msgid "Close playlist"
-msgstr "Luk afspilningsliste"
+msgstr "Luk playliste"
 
 msgctxt "#31058"
 msgid "System music files"
@@ -106,7 +138,7 @@ msgstr "Systemmusikfiler"
 
 msgctxt "#31059"
 msgid "Current playlist"
-msgstr "Nuværende afspilningsliste"
+msgstr "Nuværende playliste"
 
 msgctxt "#31200"
 msgid "Back"
@@ -133,8 +165,8 @@ msgid "Data provider"
 msgstr "Dataleverandør"
 
 msgctxt "#31309"
-msgid "Memory Used:"
-msgstr "Hukommelse i brug:"
+msgid "System Memory Used:"
+msgstr "System hukommelse ibrug:"
 
 msgctxt "#31320"
 msgid "Last Logged In"
@@ -172,21 +204,9 @@ msgctxt "#31421"
 msgid "Select your Kodi user Profile[CR]to login and continue"
 msgstr "Vælg din Kodi brugerprofil[CR]for at logge ind og fortsætte"
 
-msgctxt "#31500"
-msgid "Home Menu Catagory Buttons"
-msgstr "Hjemmemenu Kategoriknapper"
-
-msgctxt "#31501"
-msgid "Home Page Add-on Quick Links"
-msgstr "Hurtig-links til Addons på Hjemmeskærm"
-
-msgctxt "#31502"
-msgid "Miscellaneous Options"
-msgstr "Diverse Indstillinger"
-
 msgctxt "#31550"
-msgid "Home Screen Weather Info and button"
-msgstr "Information om og knap til Vejret på Hjemmeskærmen"
+msgid "Backgrounds"
+msgstr "Baggrunde"
 
 msgctxt "#31551"
 msgid "Add-on Shortcut"
@@ -200,6 +220,10 @@ msgctxt "#31557"
 msgid "Hide video background"
 msgstr "Skjul videobaggrund"
 
+msgctxt "#31560"
+msgid "Available groups"
+msgstr "Tilgængelig grupper"
+
 msgctxt "#31561"
 msgid "Add Group"
 msgstr "Tilføj Gruppe"
@@ -211,3 +235,11 @@ msgstr "Omdøb Gruppe"
 msgctxt "#31563"
 msgid "Delete Group"
 msgstr "Slet Gruppe"
+
+msgctxt "#31564"
+msgid "Show hidden"
+msgstr "Vis skjulte"
+
+msgctxt "#31565"
+msgid "Show deleted"
+msgstr "Vis slettede"

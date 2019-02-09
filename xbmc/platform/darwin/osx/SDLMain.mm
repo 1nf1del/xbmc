@@ -1,13 +1,12 @@
-/*   SDLMain.m - main entry point for our Cocoa-ized SDL app
-       Initial Version: Darrell Walisser <dwaliss1@purdue.edu>
-       Non-NIB-Code & other changes: Max Horn <max@quendi.de>
-
-    Feel free to customize this file to suit your needs
-*/
 /*
-  SDLMain.m and SDLMain.h carry neither a copyright or license. They are in the
-  public domain.
-*/
+ *  SDLMain.mm - main entry point for our Cocoa-ized SDL app
+ *  Initial Version: Darrell Walisser <dwaliss1@purdue.edu>
+ *  Non-NIB-Code & other changes: Max Horn <max@quendi.de>
+ *
+ *  SPDX-License-Identifier: Unlicense
+ *  See LICENSES/README.md for more information.
+ */
+
 #if !defined(__arm__) && !defined(__aarch64__)
 
 #import "SDL/SDL.h"
@@ -16,18 +15,13 @@
 #import <unistd.h>
 
 #import "platform/darwin/osx/CocoaInterface.h"
-//hack around problem with xbmc's typedef int BOOL
-// and obj-c's typedef unsigned char BOOL
-#define BOOL XBMC_BOOL 
 #import "PlatformDefs.h"
 #import "messaging/ApplicationMessenger.h"
-#import "storage/osx/DarwinStorageProvider.h"
-#undef BOOL
+#import "platform/darwin/osx/storage/DarwinStorageProvider.h"
 
 #import "platform/darwin/osx/HotKeyController.h"
-#import "platform/darwin/DarwinUtils.h"
 
-// For some reaon, Apple removed setAppleMenu from the headers in 10.4,
+// For some reason, Apple removed setAppleMenu from the headers in 10.4,
 // but the method still is there and works. To avoid warnings, we declare
 // it ourselves here.
 @interface NSApplication(SDL_Missing_Methods)
@@ -53,7 +47,6 @@ extern OSErr	CPSSetFrontProcess(CPSProcessSerNum *psn);
 
 static int    gArgc;
 static char  **gArgv;
-static BOOL   gFinderLaunch;
 static BOOL   gCalledAppMainline = FALSE;
 
 static NSString *getApplicationName(void)
@@ -138,13 +131,13 @@ static void setupWindowMenu(void)
   menuItem = [[NSMenuItem alloc] initWithTitle:@"Minimize" action:@selector(performMiniaturize:) keyEquivalent:@"m"];
   [windowMenu addItem:menuItem];
   [menuItem release];
-  
+
   // "Title Bar" item
   menuItem = [[NSMenuItem alloc] initWithTitle:@"Title Bar" action:@selector(titlebarToggle:) keyEquivalent:@""];
   [windowMenu addItem:menuItem];
   [menuItem setState: true];
   [menuItem release];
-  
+
   // Put menu into the menubar
   windowMenuItem = [[NSMenuItem alloc] initWithTitle:@"Window" action:nil keyEquivalent:@""];
   [windowMenuItem setSubmenu:windowMenu];
@@ -214,7 +207,7 @@ static void setupWindowMenu(void)
   BOOL isSet = [window styleMask] & NSTitledWindowMask;
   [window setMovableByWindowBackground: !isSet];
   [sender setState: isSet];
-  
+
 }
 
 
@@ -224,20 +217,17 @@ static void setupWindowMenu(void)
 @implementation XBMCDelegate
 
 // Set the working directory to the .app's parent directory
-- (void) setupWorkingDirectory:(BOOL)shouldChdir
+- (void) setupWorkingDirectory
 {
-  if (shouldChdir)
+  char parentdir[MAXPATHLEN];
+  CFURLRef url = CFBundleCopyBundleURL(CFBundleGetMainBundle());
+  CFURLRef url2 = CFURLCreateCopyDeletingLastPathComponent(0, url);
+  if (CFURLGetFileSystemRepresentation(url2, true, (UInt8 *)parentdir, MAXPATHLEN))
   {
-    char parentdir[MAXPATHLEN];
-    CFURLRef url = CFBundleCopyBundleURL(CFBundleGetMainBundle());
-    CFURLRef url2 = CFURLCreateCopyDeletingLastPathComponent(0, url);
-    if (CFURLGetFileSystemRepresentation(url2, true, (UInt8 *)parentdir, MAXPATHLEN))
-    {
-      assert( chdir (parentdir) == 0 );   /* chdir to the binary app's parent */
-		}
-		CFRelease(url);
-		CFRelease(url2);
+    assert( chdir (parentdir) == 0 );   /* chdir to the binary app's parent */
   }
+  CFRelease(url);
+  CFRelease(url2);
 }
 
 - (void) applicationWillTerminate: (NSNotification *) note
@@ -280,7 +270,7 @@ static void setupWindowMenu(void)
 // To use Cocoa on secondary POSIX threads, your application must first detach
 // at least one NSThread object, which can immediately exit. Some info says this
 // is not required anymore, who knows ?
-- (void) kickstartMultiThreaded:(id)arg;
+- (void) kickstartMultiThreaded:(id)arg
 {
   NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
   // empty
@@ -295,7 +285,7 @@ static void setupWindowMenu(void)
     [NSThread detachNewThreadSelector:@selector(kickstartMultiThreaded:) toTarget:self withObject:nil];
 
   // Set the working directory to the .app's parent directory
-  [self setupWorkingDirectory:gFinderLaunch];
+  [self setupWorkingDirectory];
 
   [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
     selector:@selector(deviceDidMountNotification:)
@@ -309,7 +299,7 @@ static void setupWindowMenu(void)
 
   NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
 
-  // create media key handler singlton
+  // create media key handler singleton
   [[HotKeyController sharedController] enableTap];
   // add media key notifications
   [center addObserver:self
@@ -387,10 +377,6 @@ static void setupWindowMenu(void)
   char *arg;
   char **newargv;
 
-  // MacOS is passing command line args.
-  if (!gFinderLaunch)
-    return FALSE;
-
   // app has started, ignore this document.
   if (gCalledAppMainline)
     return FALSE;
@@ -416,21 +402,33 @@ static void setupWindowMenu(void)
   return TRUE;
 }
 
-- (void) deviceDidMountNotification:(NSNotification *) note 
+- (void) deviceDidMountNotification:(NSNotification *) note
 {
   // calling into c++ code, need to use autorelease pools
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
 
-  CDarwinStorageProvider::SetEvent();
+  NSString* volumeLabel = [note.userInfo objectForKey:@"NSWorkspaceVolumeLocalizedNameKey"];
+  const char* label = [volumeLabel UTF8String];
+
+  NSString* volumePath = [note.userInfo objectForKey:@"NSDevicePath"];
+  const char* path = [volumePath UTF8String];
+
+  CDarwinStorageProvider::VolumeMountNotification(label, path);
   [pool release];
 }
 
-- (void) deviceDidUnMountNotification:(NSNotification *) note 
+- (void) deviceDidUnMountNotification:(NSNotification *) note
 {
   // calling into c++ code, need to use autorelease pools
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
 
-  CDarwinStorageProvider::SetEvent();
+  NSString* volumeLabel = [note.userInfo objectForKey:@"NSWorkspaceVolumeLocalizedNameKey"];
+  const char* label = [volumeLabel UTF8String];
+
+  NSString* volumePath = [note.userInfo objectForKey:@"NSDevicePath"];
+  const char* path = [volumePath UTF8String];
+
+  CDarwinStorageProvider::VolumeUnmountNotification(label, path);
   [pool release];
 }
 
@@ -526,22 +524,12 @@ int main(int argc, char *argv[])
     gArgv[0] = argv[0];
     gArgv[1] = NULL;
     gArgc = 1;
-    gFinderLaunch = YES;
   } else {
     gArgc = argc;
     gArgv = (char **) SDL_malloc(sizeof (char *) * (argc+1));
     for (int i = 0; i <= argc; i++)
         gArgv[i] = argv[i];
-    gFinderLaunch = NO;
   }
-
-  // fix open with document/movie - autostart
-  // on mavericks we are not called with "-psn" anymore
-  // as the whole ProcessSerialNumber approach is deprecated
-  // in that case assume finder launch - else
-  // we wouldn't handle documents/movies someone dragged on the app icon
-  if (CDarwinUtils::IsMavericks())
-    gFinderLaunch = TRUE;
 
   // Ensure the application object is initialised
   [XBMCApplication sharedApplication];

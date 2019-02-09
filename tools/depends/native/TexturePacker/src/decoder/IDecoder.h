@@ -19,6 +19,7 @@
  */
 
 #pragma once
+
 #include <string>
 #include <vector>
 
@@ -26,7 +27,7 @@ class RGBAImage
 {
 public:
   RGBAImage() : pixels(NULL), width(0), height(0), bbp(0), pitch(0) {}
-  
+
   char *pixels;//image data
   int width;// width
   int height;// height
@@ -59,7 +60,7 @@ class DecodedFrames
 class IDecoder
 {
   public:
-    virtual ~IDecoder(){}
+    virtual ~IDecoder() = default;
     virtual bool CanDecode(const std::string &filename) = 0;
     virtual bool LoadFile(const std::string &filename, DecodedFrames &frames) = 0;
     virtual void FreeDecodedFrames(DecodedFrames &frames) = 0;

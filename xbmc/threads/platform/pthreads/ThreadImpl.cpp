@@ -1,26 +1,11 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#if defined(HAVE_CONFIG_H)
-  #include "config.h"
-#endif
 #include <limits.h>
 #if defined(TARGET_ANDROID)
 #include <unistd.h>
@@ -31,15 +16,42 @@
 #include <string.h>
 #ifdef TARGET_FREEBSD
 #include <sys/param.h>
-#if __FreeBSD_version < 900031
-#include <sys/thr.h>
-#else
 #include <pthread_np.h>
-#endif
 #endif
 
 #include <signal.h>
+#include "utils/log.h"
 
+namespace XbmcThreads
+{
+  // ==========================================================
+  static pthread_mutexattr_t recursiveAttr;
+
+  static bool setRecursiveAttr()
+  {
+    static bool alreadyCalled = false; // initialized to 0 in the data segment prior to startup init code running
+    if (!alreadyCalled)
+    {
+      pthread_mutexattr_init(&recursiveAttr);
+      pthread_mutexattr_settype(&recursiveAttr,PTHREAD_MUTEX_RECURSIVE);
+#if !defined(TARGET_ANDROID)
+      pthread_mutexattr_setprotocol(&recursiveAttr,PTHREAD_PRIO_INHERIT);
+#endif
+      alreadyCalled = true;
+    }
+    return true; // note, we never call destroy.
+  }
+
+  static bool recursiveAttrSet = setRecursiveAttr();
+
+  pthread_mutexattr_t* CRecursiveMutex::getRecursiveAttr()
+  {
+    if (!recursiveAttrSet) // this is only possible in the single threaded startup code
+      recursiveAttrSet = setRecursiveAttr();
+    return &recursiveAttr;
+  }
+  // ==========================================================
+}
 void CThread::SpawnThread(unsigned stacksize)
 {
   pthread_attr_t attr;
@@ -51,7 +63,7 @@ void CThread::SpawnThread(unsigned stacksize)
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
   if (pthread_create(&m_ThreadId, &attr, (void*(*)(void*))staticThread, this) != 0)
   {
-    if (logger) logger->Log(LOGNOTICE, "%s - fatal error creating thread",__FUNCTION__);
+    CLog::Log(LOGNOTICE, "%s - fatal error creating thread",__FUNCTION__);
   }
   pthread_attr_destroy(&attr);
 }
@@ -61,31 +73,19 @@ void CThread::TermHandler() { }
 void CThread::SetThreadInfo()
 {
 #ifdef TARGET_FREEBSD
-#if __FreeBSD_version < 900031
-  long lwpid;
-  thr_self(&lwpid);
-  m_ThreadOpaque.LwpId = lwpid;
-#else
   m_ThreadOpaque.LwpId = pthread_getthreadid_np();
-#endif
 #elif defined(TARGET_ANDROID)
   m_ThreadOpaque.LwpId = gettid();
 #else
   m_ThreadOpaque.LwpId = syscall(SYS_gettid);
 #endif
 
-#if defined(HAVE_PTHREAD_SETNAME_NP)
-#ifdef TARGET_DARWIN
-#if(__MAC_OS_X_VERSION_MIN_REQUIRED >= 1060 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 30200)
+#if defined(TARGET_DARWIN)
   pthread_setname_np(m_ThreadName.c_str());
-#endif
-#else
+#elif defined(TARGET_LINUX) && defined(__GLIBC__)
   pthread_setname_np(m_ThreadId, m_ThreadName.c_str());
 #endif
-#elif defined(HAVE_PTHREAD_SET_NAME_NP)
-  pthread_set_name_np(m_ThreadId, m_ThreadName.c_str());
-#endif
-    
+
 #ifdef RLIMIT_NICE
   // get user max prio
   struct rlimit limit;
@@ -106,10 +106,10 @@ void CThread::SetThreadInfo()
   // call will fail
   if (userMaxPrio > 0)
   {
-    // start thread with nice level of appication
+    // start thread with nice level of application
     int appNice = getpriority(PRIO_PROCESS, getpid());
     if (setpriority(PRIO_PROCESS, m_ThreadOpaque.LwpId, appNice) != 0)
-      if (logger) logger->Log(LOGERROR, "%s: error %s", __FUNCTION__, strerror(errno));
+      CLog::Log(LOGERROR, "%s: error %s", __FUNCTION__, strerror(errno));
   }
 #endif
 }
@@ -117,6 +117,15 @@ void CThread::SetThreadInfo()
 ThreadIdentifier CThread::GetCurrentThreadId()
 {
   return pthread_self();
+}
+
+ThreadIdentifier CThread::GetDisplayThreadId(const ThreadIdentifier tid)
+{
+#if defined(TARGET_ANDROID)
+  return pthread_gettid_np(tid);
+#else
+  return tid;
+#endif
 }
 
 bool CThread::IsCurrentThread(const ThreadIdentifier tid)
@@ -148,7 +157,7 @@ bool CThread::SetPriority(const int iPriority)
 
   // wait until thread is running, it needs to get its lwp id
   m_StartEvent.Wait();
-  
+
   CSingleLock lock(m_CriticalSection);
 
   // get min prio for SCHED_RR
@@ -192,7 +201,7 @@ bool CThread::SetPriority(const int iPriority)
     if (setpriority(PRIO_PROCESS, m_ThreadOpaque.LwpId, prio) == 0)
       bReturn = true;
     else
-      if (logger) logger->Log(LOGERROR, "%s: error %s", __FUNCTION__, strerror(errno));
+      CLog::Log(LOGERROR, "%s: error %s", __FUNCTION__, strerror(errno));
   }
 #endif
 
@@ -203,11 +212,11 @@ int CThread::GetPriority()
 {
   int iReturn;
 
-  // lwp id is valid after start signel has fired
+  // lwp id is valid after start signal has fired
   m_StartEvent.Wait();
 
   CSingleLock lock(m_CriticalSection);
-  
+
   int appNice = getpriority(PRIO_PROCESS, getpid());
   int prio = getpriority(PRIO_PROCESS, m_ThreadOpaque.LwpId);
   iReturn = appNice - prio;
@@ -225,10 +234,10 @@ bool CThread::WaitForThreadExit(unsigned int milliseconds)
 int64_t CThread::GetAbsoluteUsage()
 {
   CSingleLock lock(m_CriticalSection);
-  
+
   if (!m_ThreadId)
   return 0;
-  
+
   int64_t time = 0;
 #ifdef TARGET_DARWIN
   thread_basic_info threadInfo;
@@ -280,9 +289,7 @@ float CThread::GetRelativeUsage()
 
 void term_handler (int signum)
 {
-  XbmcCommons::ILogger* logger = CThread::GetLogger();
-  if (logger)
-    logger->Log(LOGERROR,"thread 0x%lx (%lu) got signal %d. calling OnException and terminating thread abnormally.", (long unsigned int)pthread_self(), (long unsigned int)pthread_self(), signum);
+  CLog::Log(LOGERROR,"thread 0x%lx (%lu) got signal %d. calling OnException and terminating thread abnormally.", (long unsigned int)pthread_self(), (long unsigned int)pthread_self(), signum);
   CThread* curThread = CThread::GetCurrentThread();
   if (curThread)
   {

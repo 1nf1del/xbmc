@@ -1,45 +1,30 @@
 /*
- *      Copyright (c) 2002 d7o3g4q and RUNTiME
+ *  Copyright (c) 2002 d7o3g4q and RUNTiME
  *      Portions Copyright (c) by the authors of ffmpeg and xvid
- *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
-
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#elif defined(TARGET_WINDOWS)
-#include "system.h"
-#endif
 
 #include "OMXAudio.h"
 #include "Application.h"
+#include "ServiceBroker.h"
 #include "utils/log.h"
-#include "linux/RBP.h"
+#include "platform/linux/RBP.h"
 
 #define CLASSNAME "COMXAudio"
 
-#include "linux/XMemUtils.h"
+#include "platform/linux/XMemUtils.h"
 
 #include "settings/AdvancedSettings.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "guilib/LocalizeStrings.h"
-#include "cores/AudioEngine/AEFactory.h"
+#include "cores/AudioEngine/Interfaces/AE.h"
+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
 #include "Util.h"
 #include <algorithm>
 #include <cassert>
@@ -65,7 +50,7 @@ static const GUID KSDATAFORMAT_SUBTYPE_PCM = {
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 //***********************************************************************************************
-COMXAudio::COMXAudio() :
+COMXAudio::COMXAudio(CProcessInfo &processInfo) :
   m_Initialized     (false  ),
   m_CurrentVolume   (0      ),
   m_Mute            (false  ),
@@ -93,18 +78,26 @@ COMXAudio::COMXAudio() :
   m_last_pts        (DVD_NOPTS_VALUE),
   m_submitted_eos   (false  ),
   m_failed_eos      (false  ),
-  m_output          (AESINKPI_UNKNOWN)
+  m_output          (AESINKPI_UNKNOWN),
+  m_processInfo(processInfo)
 {
-  CAEFactory::Suspend();
-  while (!CAEFactory::IsSuspended())
-    Sleep(10);
+  // magic value used when omxplayer is playing - want sink to be disabled
+  AEAudioFormat m_format;
+  m_format.m_dataFormat = AE_FMT_RAW;
+  m_format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_AC3;
+  m_format.m_streamInfo.m_sampleRate = 16000;
+  m_format.m_streamInfo.m_channels = 2;
+  m_format.m_sampleRate = 16000;
+  m_format.m_frameSize = 1;
+  m_pAudioStream = CServiceBroker::GetActiveAE()->MakeStream(m_format);
 }
 
 COMXAudio::~COMXAudio()
 {
   Deinitialize();
 
-  CAEFactory::Resume();
+  if (m_pAudioStream)
+    CServiceBroker::GetActiveAE()->FreeStream(m_pAudioStream, true);
 }
 
 bool COMXAudio::PortSettingsChanged()
@@ -140,7 +133,7 @@ bool COMXAudio::PortSettingsChanged()
       return false;
   }
 
-  SetDynamicRangeCompression((long)(CMediaSettings::GetInstance().GetCurrentVideoSettings().m_VolumeAmplification * 100));
+  SetDynamicRangeCompression((long)(m_processInfo.GetVideoSettings().m_VolumeAmplification * 100));
   UpdateAttenuation();
 
   if( m_omx_mixer.IsInitialized() )
@@ -159,7 +152,7 @@ bool COMXAudio::PortSettingsChanged()
     // round up to power of 2
     m_pcm_output.nChannels = m_OutputChannels > 4 ? 8 : m_OutputChannels > 2 ? 4 : m_OutputChannels;
     /* limit samplerate (through resampling) if requested */
-    m_pcm_output.nSamplingRate = std::min(std::max((int)m_pcm_output.nSamplingRate, 8000), CSettings::GetInstance().GetInt(CSettings::SETTING_AUDIOOUTPUT_SAMPLERATE));
+    m_pcm_output.nSamplingRate = std::min(std::max((int)m_pcm_output.nSamplingRate, 8000), CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_AUDIOOUTPUT_SAMPLERATE));
 
     m_pcm_output.nPortIndex = m_omx_mixer.GetOutputPort();
     omx_err = m_omx_mixer.SetParameter(OMX_IndexParamAudioPcm, &m_pcm_output);
@@ -252,7 +245,7 @@ bool COMXAudio::PortSettingsChanged()
   {
     // By default audio_render is the clock master, and if output samples don't fit the timestamps, it will speed up/slow down the clock.
     // This tends to be better for maintaining audio sync and avoiding audio glitches, but can affect video/display sync
-    if(CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK) || m_output == AESINKPI_BOTH)
+    if(CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK) || m_output == AESINKPI_BOTH)
     {
       OMX_CONFIG_BOOLEANTYPE configBool;
       OMX_INIT_STRUCTURE(configBool);
@@ -278,7 +271,7 @@ bool COMXAudio::PortSettingsChanged()
   {
     // By default audio_render is the clock master, and if output samples don't fit the timestamps, it will speed up/slow down the clock.
     // This tends to be better for maintaining audio sync and avoiding audio glitches, but can affect video/display sync
-    if(CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK))
+    if(CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK))
     {
       OMX_CONFIG_BOOLEANTYPE configBool;
       OMX_INIT_STRUCTURE(configBool);
@@ -562,12 +555,15 @@ bool COMXAudio::Initialize(AEAudioFormat format, OMXClock *clock, CDVDStreamInfo
 
   SetCodingType(format);
 
-  if (m_Passthrough || CSettings::GetInstance().GetString(CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE) == "PI:HDMI")
+  const std::string audioDevice = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE);
+  if (m_Passthrough || audioDevice == "PI:HDMI")
     m_output = AESINKPI_HDMI;
-  else if (CSettings::GetInstance().GetString(CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE) == "PI:Analogue")
+  else if (audioDevice == "PI:Analogue")
     m_output = AESINKPI_ANALOGUE;
-  else if (CSettings::GetInstance().GetString(CSettings::SETTING_AUDIOOUTPUT_AUDIODEVICE) == "PI:Both")
+  else if (audioDevice == "PI:Both")
     m_output = AESINKPI_BOTH;
+  else if (audioDevice == "Default")
+    m_output = AESINKPI_HDMI;
   else assert(0);
 
   if(hints.extrasize > 0 && hints.extradata != NULL)
@@ -590,11 +586,12 @@ bool COMXAudio::Initialize(AEAudioFormat format, OMXClock *clock, CDVDStreamInfo
 
   if (!m_Passthrough)
   {
-    bool upmix = CSettings::GetInstance().GetBool(CSettings::SETTING_AUDIOOUTPUT_STEREOUPMIX);
-    bool normalize = !CSettings::GetInstance().GetBool(CSettings::SETTING_AUDIOOUTPUT_MAINTAINORIGINALVOLUME);
+    const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+    bool upmix = settings->GetBool(CSettings::SETTING_AUDIOOUTPUT_STEREOUPMIX);
+    bool normalize = !settings->GetBool(CSettings::SETTING_AUDIOOUTPUT_MAINTAINORIGINALVOLUME);
     void *remapLayout = NULL;
 
-    CAEChannelInfo stdLayout = (enum AEStdChLayout)CSettings::GetInstance().GetInt(CSettings::SETTING_AUDIOOUTPUT_CHANNELS);
+    CAEChannelInfo stdLayout = (enum AEStdChLayout)settings->GetInt(CSettings::SETTING_AUDIOOUTPUT_CHANNELS);
 
     // ignore layout setting for analogue
     if (m_output == AESINKPI_ANALOGUE || m_output == AESINKPI_BOTH)
@@ -603,7 +600,7 @@ bool COMXAudio::Initialize(AEAudioFormat format, OMXClock *clock, CDVDStreamInfo
     CAEChannelInfo resolvedMap = channelMap;
     resolvedMap.ResolveChannels(stdLayout);
 
-    if (CSettings::GetInstance().GetInt(CSettings::SETTING_AUDIOOUTPUT_CONFIG) == AE_CONFIG_FIXED || (upmix && channelMap.Count() <= 2))
+    if (settings->GetInt(CSettings::SETTING_AUDIOOUTPUT_CONFIG) == AE_CONFIG_FIXED || (upmix && channelMap.Count() <= 2))
       resolvedMap = stdLayout;
 
     uint64_t m_dst_chan_layout = GetAVChannelLayout(resolvedMap);
@@ -790,7 +787,7 @@ bool COMXAudio::Initialize(AEAudioFormat format, OMXClock *clock, CDVDStreamInfo
   omx_err = m_omx_decoder.SetParameter(OMX_IndexParamPortDefinition, &port_param);
   if(omx_err != OMX_ErrorNone)
   {
-    CLog::Log(LOGERROR, "COMXAudio::Initialize error set OMX_IndexParamPortDefinition (intput) omx_err(0x%08x)\n", omx_err);
+    CLog::Log(LOGERROR, "COMXAudio::Initialize error set OMX_IndexParamPortDefinition (input) omx_err(0x%08x)\n", omx_err);
     return false;
   }
 
@@ -830,7 +827,7 @@ bool COMXAudio::Initialize(AEAudioFormat format, OMXClock *clock, CDVDStreamInfo
   }
 
   omx_err = m_omx_decoder.AllocInputBuffers();
-  if(omx_err != OMX_ErrorNone) 
+  if(omx_err != OMX_ErrorNone)
   {
     CLog::Log(LOGERROR, "COMXAudio::Initialize - Error alloc buffers 0x%08x", omx_err);
     return false;
@@ -866,7 +863,7 @@ bool COMXAudio::Initialize(AEAudioFormat format, OMXClock *clock, CDVDStreamInfo
       m_omx_decoder.DecoderEmptyBufferDone(m_omx_decoder.GetComponent(), omx_buffer);
       return false;
     }
-  } 
+  }
 
   /* return on decoder error so m_Initialized stays false */
   if(m_omx_decoder.BadState())
@@ -1023,7 +1020,7 @@ bool COMXAudio::ApplyVolume(void)
   fVolume = CAEUtil::GainToScale(CAEUtil::PercentToGain(fVolume));
 
   // the analogue volume is too quiet for some. Allow use of an advancedsetting to boost this (at risk of distortion) (deprecated)
-  double gain = pow(10, (g_advancedSettings.m_ac3Gain - 12.0f) / 20.0);
+  double gain = pow(10, (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_ac3Gain - 12.0f) / 20.0);
 
   const float* coeff = m_downmix_matrix;
 
@@ -1182,7 +1179,7 @@ unsigned int COMXAudio::AddPackets(const void* data, unsigned int len, double dt
     omx_err = m_omx_decoder.EmptyThisBuffer(omx_buffer);
     if (omx_err != OMX_ErrorNone)
     {
-      CLog::Log(LOGERROR, "%s::%s - OMX_EmptyThisBuffer() finaly failed\n", CLASSNAME, __func__);
+      CLog::Log(LOGERROR, "%s::%s - OMX_EmptyThisBuffer() finally failed\n", CLASSNAME, __func__);
       m_omx_decoder.DecoderEmptyBufferDone(m_omx_decoder.GetComponent(), omx_buffer);
       return 0;
     }
@@ -1249,8 +1246,8 @@ void COMXAudio::UpdateAttenuation()
   {
     float alpha_h = -1.0f/(0.025f*log10f(0.999f));
     float alpha_r = -1.0f/(0.100f*log10f(0.900f));
-    float decay  = powf(10.0f, -1.0f / (alpha_h * g_advancedSettings.m_limiterHold));
-    float attack = powf(10.0f, -1.0f / (alpha_r * g_advancedSettings.m_limiterRelease));
+    float decay  = powf(10.0f, -1.0f / (alpha_h * CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_limiterHold));
+    float attack = powf(10.0f, -1.0f / (alpha_r * CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_limiterRelease));
     // if we are going to clip imminently then deal with it now
     if (imminent_maxlevel > m_maxLevel)
       m_maxLevel = imminent_maxlevel;
@@ -1315,7 +1312,7 @@ float COMXAudio::GetCacheTotal()
 }
 
 //***********************************************************************************************
-unsigned int COMXAudio::GetChunkLen()
+unsigned int COMXAudio::GetChunkLen() const
 {
   return m_ChunkLen;
 }

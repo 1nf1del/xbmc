@@ -1,24 +1,12 @@
-#pragma once
-
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
 
 #include "cores/AudioEngine/Utils/AEAudioFormat.h"
 
@@ -30,27 +18,27 @@ extern "C" {
 }
 
 #include "DVDStreamInfo.h"
-#include "linux/PlatformDefs.h"
+#include "platform/linux/PlatformDefs.h"
 #include "cores/VideoPlayer/Process/ProcessInfo.h"
 
 class COMXAudioCodecOMX
 {
 public:
-  COMXAudioCodecOMX(CProcessInfo &processInfo);
+  explicit COMXAudioCodecOMX(CProcessInfo &processInfo);
   virtual ~COMXAudioCodecOMX();
   bool Open(CDVDStreamInfo &hints);
   void Dispose();
-  int Decode(BYTE* pData, int iSize, double dts, double pts);
-  int GetData(BYTE** dst, double &dts, double &pts);
+  int Decode(unsigned char* pData, int iSize, double dts, double pts);
+  int GetData(unsigned char** dst, double &dts, double &pts);
   void Reset();
-  int GetChannels();
+  int GetChannels() const;
   void BuildChannelMap();
   CAEChannelInfo GetChannelMap();
-  int GetSampleRate();
-  int GetBitsPerSample();
+  int GetSampleRate() const;
+  int GetBitsPerSample() const;
   static const char* GetName() { return "FFmpeg"; }
-  int GetBitRate();
-  unsigned int GetFrameSize() { return m_frameSize; }
+  int GetBitRate() const;
+  unsigned int GetFrameSize() const { return m_frameSize; }
 
 protected:
   CProcessInfo &m_processInfo;
@@ -61,7 +49,7 @@ protected:
 
   AVFrame* m_pFrame1;
 
-  BYTE *m_pBufferOutput;
+  unsigned char *m_pBufferOutput;
   int   m_iBufferOutputUsed;
   int   m_iBufferOutputAlloced;
 

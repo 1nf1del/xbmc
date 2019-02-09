@@ -1,11 +1,11 @@
 # Kodi Media Center language file
 # Addon Name: Estuary
 # Addon id: skin.estuary
-# Addon Provider: phil65, Piers
+# Addon Provider: phil65, Ichabod Fletchman
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -68,14 +68,6 @@ msgctxt "#31072"
 msgid "Power Options"
 msgstr "Tùy chọn nguồn"
 
-msgctxt "#31081"
-msgid "Album info"
-msgstr "Thông tin album"
-
-msgctxt "#31085"
-msgid "Channel Group"
-msgstr "Nhóm kênh"
-
 msgctxt "#31096"
 msgid "Local subtitle available"
 msgstr "Phụ đề sẵn có trong máy"
@@ -84,6 +76,6 @@ msgctxt "#31097"
 msgid "Channel options"
 msgstr "Thiết lập kênh"
 
-msgctxt "#31133"
-msgid "Hide"
-msgstr "Ẩn"
+msgctxt "#31165"
+msgid "Profile name"
+msgstr "Tên tài khoản"

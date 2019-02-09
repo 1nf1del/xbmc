@@ -1,50 +1,62 @@
 /*
- *      Copyright (C) 2005-2016 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "ProcessInfo.h"
 #include "ServiceBroker.h"
 #include "cores/DataCacheCore.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
 
-// Override for platform ports
-#if !defined(PLATFORM_OVERRIDE)
+CCriticalSection createSection;
+std::map<std::string, CreateProcessControl> CProcessInfo::m_processControls;
+
+void CProcessInfo::RegisterProcessControl(std::string id, CreateProcessControl createFunc)
+{
+  CSingleLock lock(createSection);
+
+  m_processControls.clear();
+  m_processControls[id] = createFunc;
+}
 
 CProcessInfo* CProcessInfo::CreateInstance()
 {
+  CSingleLock lock(createSection);
+
+  CProcessInfo *ret = nullptr;
+  for (auto &info : m_processControls)
+  {
+    ret = info.second();
+    if (ret)
+      return ret;
+  }
   return new CProcessInfo();
 }
 
-#endif
-
-
-// base class definitions
 CProcessInfo::CProcessInfo()
 {
-
+  m_videoSettingsLocked.reset(new CVideoSettingsLocked(m_videoSettings, m_settingsSection));
 }
 
-CProcessInfo::~CProcessInfo()
+void CProcessInfo::SetDataCache(CDataCacheCore *cache)
 {
+  m_dataCache = cache;;
 
+  ResetVideoCodecInfo();
+  m_renderGuiLayer = false;
+  m_renderVideoLayer = false;
+  m_dataCache->SetGuiRender(m_renderGuiLayer);
+  m_dataCache->SetVideoRender(m_renderVideoLayer);
 }
 
+//******************************************************************************
+// video codec
+//******************************************************************************
 void CProcessInfo::ResetVideoCodecInfo()
 {
   CSingleLock lock(m_videoCodecSection);
@@ -53,29 +65,39 @@ void CProcessInfo::ResetVideoCodecInfo()
   m_videoDecoderName = "unknown";
   m_videoDeintMethod = "unknown";
   m_videoPixelFormat = "unknown";
+  m_videoStereoMode.clear();
   m_videoWidth = 0;
   m_videoHeight = 0;
   m_videoFPS = 0.0;
+  m_videoDAR = 0.0;
+  m_videoIsInterlaced = false;
   m_deintMethods.clear();
   m_deintMethods.push_back(EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE);
   m_deintMethodDefault = EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE;
-  m_renderInfo.Reset();
+  m_stateSeeking = false;
 
-  CServiceBroker::GetDataCacheCore().SetVideoDecoderName(m_videoDecoderName, m_videoIsHWDecoder);
-  CServiceBroker::GetDataCacheCore().SetVideoDeintMethod(m_videoDeintMethod);
-  CServiceBroker::GetDataCacheCore().SetVideoPixelFormat(m_videoPixelFormat);
-  CServiceBroker::GetDataCacheCore().SetVideoDimensions(m_videoWidth, m_videoHeight);
-  CServiceBroker::GetDataCacheCore().SetVideoFps(m_videoFPS);
+  if (m_dataCache)
+  {
+    m_dataCache->SetVideoDecoderName(m_videoDecoderName, m_videoIsHWDecoder);
+    m_dataCache->SetVideoDeintMethod(m_videoDeintMethod);
+    m_dataCache->SetVideoPixelFormat(m_videoPixelFormat);
+    m_dataCache->SetVideoDimensions(m_videoWidth, m_videoHeight);
+    m_dataCache->SetVideoFps(m_videoFPS);
+    m_dataCache->SetVideoDAR(m_videoDAR);
+    m_dataCache->SetStateSeeking(m_stateSeeking);
+    m_dataCache->SetVideoStereoMode(m_videoStereoMode);
+  }
 }
 
-void CProcessInfo::SetVideoDecoderName(std::string name, bool isHw)
+void CProcessInfo::SetVideoDecoderName(const std::string &name, bool isHw)
 {
   CSingleLock lock(m_videoCodecSection);
 
   m_videoIsHWDecoder = isHw;
   m_videoDecoderName = name;
 
-  CServiceBroker::GetDataCacheCore().SetVideoDecoderName(m_videoDecoderName, m_videoIsHWDecoder);
+  if (m_dataCache)
+    m_dataCache->SetVideoDecoderName(m_videoDecoderName, m_videoIsHWDecoder);
 }
 
 std::string CProcessInfo::GetVideoDecoderName()
@@ -92,13 +114,14 @@ bool CProcessInfo::IsVideoHwDecoder()
   return m_videoIsHWDecoder;
 }
 
-void CProcessInfo::SetVideoDeintMethod(std::string method)
+void CProcessInfo::SetVideoDeintMethod(const std::string &method)
 {
   CSingleLock lock(m_videoCodecSection);
 
   m_videoDeintMethod = method;
 
-  CServiceBroker::GetDataCacheCore().SetVideoDeintMethod(m_videoDeintMethod);
+  if (m_dataCache)
+    m_dataCache->SetVideoDeintMethod(m_videoDeintMethod);
 }
 
 std::string CProcessInfo::GetVideoDeintMethod()
@@ -108,13 +131,14 @@ std::string CProcessInfo::GetVideoDeintMethod()
   return m_videoDeintMethod;
 }
 
-void CProcessInfo::SetVideoPixelFormat(std::string pixFormat)
+void CProcessInfo::SetVideoPixelFormat(const std::string &pixFormat)
 {
   CSingleLock lock(m_videoCodecSection);
 
   m_videoPixelFormat = pixFormat;
 
-  CServiceBroker::GetDataCacheCore().SetVideoPixelFormat(m_videoPixelFormat);
+  if (m_dataCache)
+    m_dataCache->SetVideoPixelFormat(m_videoPixelFormat);
 }
 
 std::string CProcessInfo::GetVideoPixelFormat()
@@ -124,6 +148,23 @@ std::string CProcessInfo::GetVideoPixelFormat()
   return m_videoPixelFormat;
 }
 
+void CProcessInfo::SetVideoStereoMode(const std::string &mode)
+{
+  CSingleLock lock(m_videoCodecSection);
+
+  m_videoStereoMode = mode;
+
+  if (m_dataCache)
+    m_dataCache->SetVideoStereoMode(m_videoStereoMode);
+}
+
+std::string CProcessInfo::GetVideoStereoMode()
+{
+  CSingleLock lock(m_videoCodecSection);
+
+  return m_videoStereoMode;
+}
+
 void CProcessInfo::SetVideoDimensions(int width, int height)
 {
   CSingleLock lock(m_videoCodecSection);
@@ -131,7 +172,8 @@ void CProcessInfo::SetVideoDimensions(int width, int height)
   m_videoWidth = width;
   m_videoHeight = height;
 
-  CServiceBroker::GetDataCacheCore().SetVideoDimensions(m_videoWidth, m_videoHeight);
+  if (m_dataCache)
+    m_dataCache->SetVideoDimensions(m_videoWidth, m_videoHeight);
 }
 
 void CProcessInfo::GetVideoDimensions(int &width, int &height)
@@ -148,7 +190,8 @@ void CProcessInfo::SetVideoFps(float fps)
 
   m_videoFPS = fps;
 
-  CServiceBroker::GetDataCacheCore().SetVideoFps(m_videoFPS);
+  if (m_dataCache)
+    m_dataCache->SetVideoFps(m_videoFPS);
 }
 
 float CProcessInfo::GetVideoFps()
@@ -164,7 +207,8 @@ void CProcessInfo::SetVideoDAR(float dar)
 
   m_videoDAR = dar;
 
-  CServiceBroker::GetDataCacheCore().SetVideoDAR(m_videoDAR);
+  if (m_dataCache)
+    m_dataCache->SetVideoDAR(m_videoDAR);
 }
 
 float CProcessInfo::GetVideoDAR()
@@ -172,6 +216,20 @@ float CProcessInfo::GetVideoDAR()
   CSingleLock lock(m_videoCodecSection);
 
   return m_videoDAR;
+}
+
+void CProcessInfo::SetVideoInterlaced(bool interlaced)
+{
+  CSingleLock lock(m_videoCodecSection);
+
+  m_videoIsInterlaced = interlaced;
+}
+
+bool CProcessInfo::GetVideoInterlaced()
+{
+  CSingleLock lock(m_videoCodecSection);
+
+  return m_videoIsInterlaced;
 }
 
 EINTERLACEMETHOD CProcessInfo::GetFallbackDeintMethod()
@@ -231,7 +289,32 @@ EINTERLACEMETHOD CProcessInfo::GetDeinterlacingMethodDefault()
   return m_deintMethodDefault;
 }
 
+CVideoBufferManager& CProcessInfo::GetVideoBufferManager()
+{
+  return m_videoBufferManager;
+}
+
+std::vector<AVPixelFormat> CProcessInfo::GetPixFormats()
+{
+  CSingleLock lock(m_videoCodecSection);
+
+  if (m_pixFormats.empty())
+  {
+    return GetRenderFormats();
+  }
+  return m_pixFormats;
+}
+
+void CProcessInfo::SetPixFormats(std::vector<AVPixelFormat> &formats)
+{
+  CSingleLock lock(m_videoCodecSection);
+
+  m_pixFormats = formats;
+}
+
+//******************************************************************************
 // player audio info
+//******************************************************************************
 void CProcessInfo::ResetAudioCodecInfo()
 {
   CSingleLock lock(m_audioCodecSection);
@@ -241,19 +324,23 @@ void CProcessInfo::ResetAudioCodecInfo()
   m_audioSampleRate = 0;;
   m_audioBitsPerSample = 0;
 
-  CServiceBroker::GetDataCacheCore().SetAudioDecoderName(m_audioDecoderName);
-  CServiceBroker::GetDataCacheCore().SetAudioChannels(m_audioChannels);
-  CServiceBroker::GetDataCacheCore().SetAudioSampleRate(m_audioSampleRate);
-  CServiceBroker::GetDataCacheCore().SetAudioBitsPerSample(m_audioBitsPerSample);
+  if (m_dataCache)
+  {
+    m_dataCache->SetAudioDecoderName(m_audioDecoderName);
+    m_dataCache->SetAudioChannels(m_audioChannels);
+    m_dataCache->SetAudioSampleRate(m_audioSampleRate);
+    m_dataCache->SetAudioBitsPerSample(m_audioBitsPerSample);
+  }
 }
 
-void CProcessInfo::SetAudioDecoderName(std::string name)
+void CProcessInfo::SetAudioDecoderName(const std::string &name)
 {
   CSingleLock lock(m_audioCodecSection);
 
   m_audioDecoderName = name;
 
-  CServiceBroker::GetDataCacheCore().SetAudioDecoderName(m_audioDecoderName);
+  if (m_dataCache)
+    m_dataCache->SetAudioDecoderName(m_audioDecoderName);
 }
 
 std::string CProcessInfo::GetAudioDecoderName()
@@ -263,13 +350,14 @@ std::string CProcessInfo::GetAudioDecoderName()
   return m_audioDecoderName;
 }
 
-void CProcessInfo::SetAudioChannels(std::string channels)
+void CProcessInfo::SetAudioChannels(const std::string &channels)
 {
   CSingleLock lock(m_audioCodecSection);
 
   m_audioChannels = channels;
 
-  CServiceBroker::GetDataCacheCore().SetAudioChannels(m_audioChannels);
+  if (m_dataCache)
+    m_dataCache->SetAudioChannels(m_audioChannels);
 }
 
 std::string CProcessInfo::GetAudioChannels()
@@ -285,7 +373,8 @@ void CProcessInfo::SetAudioSampleRate(int sampleRate)
 
   m_audioSampleRate = sampleRate;
 
-  CServiceBroker::GetDataCacheCore().SetAudioSampleRate(m_audioSampleRate);
+  if (m_dataCache)
+    m_dataCache->SetAudioSampleRate(m_audioSampleRate);
 }
 
 int CProcessInfo::GetAudioSampleRate()
@@ -301,7 +390,8 @@ void CProcessInfo::SetAudioBitsPerSample(int bitsPerSample)
 
   m_audioBitsPerSample = bitsPerSample;
 
-  CServiceBroker::GetDataCacheCore().SetAudioBitsPerSample(m_audioBitsPerSample);
+  if (m_dataCache)
+    m_dataCache->SetAudioBitsPerSample(m_audioBitsPerSample);
 }
 
 int CProcessInfo::GetAudioBitsPerSample()
@@ -322,7 +412,8 @@ void CProcessInfo::SetRenderClockSync(bool enabled)
 
   m_isClockSync = enabled;
 
-  CServiceBroker::GetDataCacheCore().SetRenderClockSync(enabled);
+  if (m_dataCache)
+    m_dataCache->SetRenderClockSync(enabled);
 }
 
 bool CProcessInfo::IsRenderClockSync()
@@ -343,4 +434,244 @@ void CProcessInfo::UpdateRenderInfo(CRenderInfo &info)
     if (!Supports(deint))
       m_deintMethods.push_back(deint);
   }
+}
+
+void CProcessInfo::UpdateRenderBuffers(int queued, int discard, int free)
+{
+  CSingleLock lock(m_renderSection);
+  m_renderBufQueued = queued;
+  m_renderBufDiscard = discard;
+  m_renderBufFree = free;
+}
+
+void CProcessInfo::GetRenderBuffers(int &queued, int &discard, int &free)
+{
+  CSingleLock lock(m_renderSection);
+  queued = m_renderBufQueued;
+  discard = m_renderBufDiscard;
+  free = m_renderBufFree;
+}
+
+std::vector<AVPixelFormat> CProcessInfo::GetRenderFormats()
+{
+  std::vector<AVPixelFormat> formats;
+  formats.push_back(AV_PIX_FMT_YUV420P);
+  return formats;
+}
+
+//******************************************************************************
+// player states
+//******************************************************************************
+void CProcessInfo::SetStateSeeking(bool active)
+{
+  CSingleLock lock(m_renderSection);
+
+  m_stateSeeking = active;
+
+  if (m_dataCache)
+    m_dataCache->SetStateSeeking(active);
+}
+
+bool CProcessInfo::IsSeeking()
+{
+  CSingleLock lock(m_stateSection);
+
+  return m_stateSeeking;
+}
+
+void CProcessInfo::SetStateRealtime(bool state)
+{
+  CSingleLock lock(m_renderSection);
+
+  m_realTimeStream = state;
+}
+
+bool CProcessInfo::IsRealtimeStream()
+{
+  CSingleLock lock(m_stateSection);
+
+  return m_realTimeStream;
+}
+
+void CProcessInfo::SetSpeed(float speed)
+{
+  CSingleLock lock(m_stateSection);
+
+  m_speed = speed;
+  m_newSpeed = speed;
+
+  if (m_dataCache)
+    m_dataCache->SetSpeed(m_newTempo, speed);
+}
+
+void CProcessInfo::SetNewSpeed(float speed)
+{
+  CSingleLock lock(m_stateSection);
+
+  m_newSpeed = speed;
+
+  if (m_dataCache)
+    m_dataCache->SetSpeed(m_tempo, speed);
+}
+
+float CProcessInfo::GetNewSpeed()
+{
+  CSingleLock lock(m_stateSection);
+
+  return m_newSpeed;
+}
+
+void CProcessInfo::SetFrameAdvance(bool fa)
+{
+  CSingleLock lock(m_stateSection);
+
+  m_frameAdvance = fa;
+
+  if (m_dataCache)
+    m_dataCache->SetFrameAdvance(fa);
+}
+
+bool CProcessInfo::IsFrameAdvance()
+{
+  CSingleLock lock(m_stateSection);
+
+  return m_frameAdvance;
+}
+
+void CProcessInfo::SetTempo(float tempo)
+{
+  CSingleLock lock(m_stateSection);
+
+  m_tempo = tempo;
+  m_newTempo = tempo;
+
+  if (m_dataCache)
+    m_dataCache->SetSpeed(tempo, m_newSpeed);
+}
+
+void CProcessInfo::SetNewTempo(float tempo)
+{
+  CSingleLock lock(m_stateSection);
+
+  m_newTempo = tempo;
+
+  if (m_dataCache)
+    m_dataCache->SetSpeed(tempo, m_speed);
+}
+
+float CProcessInfo::GetNewTempo()
+{
+  CSingleLock lock(m_stateSection);
+
+  return m_newTempo;
+}
+
+float CProcessInfo::MinTempoPlatform()
+{
+  return 0.75f;
+}
+
+float CProcessInfo::MaxTempoPlatform()
+{
+  return 1.55f;
+}
+
+bool CProcessInfo::IsTempoAllowed(float tempo)
+{
+  if (tempo > MinTempoPlatform() &&
+      (tempo < MaxTempoPlatform() || tempo < CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_maxTempo))
+    return true;
+
+  return false;
+}
+
+void CProcessInfo::SetLevelVQ(int level)
+{
+  m_levelVQ = level;
+}
+
+int CProcessInfo::GetLevelVQ()
+{
+  return m_levelVQ;
+}
+
+void CProcessInfo::SetGuiRender(bool gui)
+{
+  CSingleLock lock(m_stateSection);
+
+  bool change = (m_renderGuiLayer != gui);
+  m_renderGuiLayer = gui;
+  if (change)
+  {
+    if (m_dataCache)
+        m_dataCache->SetGuiRender(gui);
+  }
+}
+
+bool CProcessInfo::GetGuiRender()
+{
+  CSingleLock lock(m_stateSection);
+
+  return m_renderGuiLayer;
+}
+
+void CProcessInfo::SetVideoRender(bool video)
+{
+  CSingleLock lock(m_stateSection);
+
+  bool change = (m_renderVideoLayer != video);
+  m_renderVideoLayer = video;
+  if (change)
+  {
+    if (m_dataCache)
+      m_dataCache->SetVideoRender(video);
+  }
+}
+
+bool CProcessInfo::GetVideoRender()
+{
+  CSingleLock lock(m_stateSection);
+
+  return m_renderVideoLayer;
+}
+
+void CProcessInfo::SetPlayTimes(time_t start, int64_t current, int64_t min, int64_t max)
+{
+  CSingleLock lock(m_stateSection);
+  m_startTime = start;
+  m_time = current;
+  m_timeMin = min;
+  m_timeMax = max;
+
+  if (m_dataCache)
+  {
+    m_dataCache->SetPlayTimes(start, current, min, max);
+  }
+}
+
+int64_t CProcessInfo::GetMaxTime()
+{
+  CSingleLock lock(m_stateSection);
+  return m_timeMax;
+}
+
+//******************************************************************************
+// settings
+//******************************************************************************
+CVideoSettings CProcessInfo::GetVideoSettings()
+{
+  CSingleLock lock(m_settingsSection);
+  return m_videoSettings;
+}
+
+CVideoSettingsLocked& CProcessInfo::UpdateVideoSettings()
+{
+  CSingleLock lock(m_settingsSection);
+  return *m_videoSettingsLocked.get();
+}
+
+void CProcessInfo::SetVideoSettings(CVideoSettings &settings)
+{
+  CSingleLock lock(m_settingsSection);
+  m_videoSettings = settings;
 }

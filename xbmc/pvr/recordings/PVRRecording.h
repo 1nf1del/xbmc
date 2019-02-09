@@ -1,23 +1,12 @@
-#pragma once
 /*
- *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
 
 /*
  * DESCRIPTION:
@@ -36,28 +25,24 @@
  */
 
 #include <string>
-#include <memory>
 #include <vector>
 
 #include "XBDateTime.h"
 #include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
+#include "threads/SystemClock.h"
 #include "video/VideoInfoTag.h"
+
+#include "pvr/PVRTypes.h"
 
 class CVideoDatabase;
 class CVariant;
 
 namespace PVR
 {
-  class CPVRRecording;
-  typedef std::shared_ptr<PVR::CPVRRecording> CPVRRecordingPtr;
-
-  class CPVRChannel;
-  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
-
   /*!
    * @brief Representation of a CPVRRecording unique ID.
    */
-  class CPVRRecordingUid
+  class CPVRRecordingUid final
   {
   public:
     int           m_iClientId;        /*!< ID of the backend */
@@ -71,16 +56,14 @@ namespace PVR
     bool operator !=(const CPVRRecordingUid& right) const;
   };
 
-  class CPVRRecording : public CVideoInfoTag
+  class CPVRRecording final : public CVideoInfoTag
   {
   public:
     int           m_iClientId;        /*!< ID of the backend */
     std::string   m_strRecordingId;   /*!< unique ID of the recording on the client */
     std::string   m_strChannelName;   /*!< name of the channel this was recorded from */
-    CDateTimeSpan m_duration;         /*!< duration of this recording */
     int           m_iPriority;        /*!< priority of this recording */
     int           m_iLifetime;        /*!< lifetime of this recording */
-    std::string   m_strStreamURL;     /*!< stream URL. if empty use pvr client */
     std::string   m_strDirectory;     /*!< directory of this recording on the client */
     std::string   m_strIconPath;      /*!< icon path */
     std::string   m_strThumbnailPath; /*!< thumbnail path */
@@ -91,27 +74,19 @@ namespace PVR
     CPVRRecording(const PVR_RECORDING &recording, unsigned int iClientId);
 
   private:
-    CPVRRecording(const CPVRRecording &tag); // intentionally not implemented.
-    CPVRRecording &operator =(const CPVRRecording &other); // intentionally not implemented.
+    CPVRRecording(const CPVRRecording &tag) = delete;
+    CPVRRecording &operator =(const CPVRRecording &other) = delete;
 
   public:
-    virtual ~CPVRRecording() {};
-
     bool operator ==(const CPVRRecording& right) const;
     bool operator !=(const CPVRRecording& right) const;
 
-    virtual void Serialize(CVariant& value) const;
+    void Serialize(CVariant& value) const override;
 
     /*!
      * @brief Reset this tag to it's initial state.
      */
     void Reset(void);
-
-    /*!
-     * @brief The duration of this recording in seconds.
-     * @return The duration.
-     */
-    int GetDuration() const;
 
     /*!
      * @brief Delete this recording on the client (if supported).
@@ -138,30 +113,58 @@ namespace PVR
     bool Rename(const std::string &strNewName);
 
     /*!
-     * @brief Set this recording's play count on the client (if supported).
+     * @brief Set this recording's play count. The value will be transferred to the backend if it supports server-side play counts.
      * @param count play count.
      * @return True if play count was set successfully, false otherwise.
      */
-    bool SetPlayCount(int count);
+    bool SetPlayCount(int count) override;
 
     /*!
-     * @brief Increment this recording's play count on the client (if supported).
+     * @brief Increment this recording's play count. The value will be transferred to the backend if it supports server-side play counts.
+     * @return True if play count was increased successfully, false otherwise.
+     */
+    bool IncrementPlayCount() override;
+
+    /*!
+     * @brief Set this recording's play count without transferring the value to the backend, even if it supports server-side play counts.
+     * @param count play count.
      * @return True if play count was set successfully, false otherwise.
      */
-    bool IncrementPlayCount();
+    bool SetLocalPlayCount(int count) { return CVideoInfoTag::SetPlayCount(count); }
+
+   /*!
+     * @brief Get this recording's local play count. The value will not be obtained from the backend, even if it supports server-side play counts.
+     * @return the play count.
+     */
+    int GetLocalPlayCount() const { return CVideoInfoTag::GetPlayCount(); }
 
     /*!
-     * @brief Set the last watched position of a recording on the backend.
-     * @param position The last watched position in seconds
-     * @return True if the last played position was updated successfully, false otherwise
+     * @brief Set this recording's resume point. The value will be transferred to the backend if it supports server-side resume points.
+     * @param resumePoint resume point.
+     * @return True if resume point was set successfully, false otherwise.
      */
-    bool SetLastPlayedPosition(int lastplayedposition);
+    bool SetResumePoint(const CBookmark &resumePoint) override;
 
     /*!
-     * @brief Retrieve the last watched position of a recording on the backend.
-     * @return The last watched position in seconds
+     * @brief Set this recording's resume point. The value will be transferred to the backend if it supports server-side resume points.
+     * @param timeInSeconds the time of the resume point
+     * @param totalTimeInSeconds the total time of the video
+     * @param playerState the player state
+     * @return True if resume point was set successfully, false otherwise.
      */
-    int GetLastPlayedPosition() const;
+    bool SetResumePoint(double timeInSeconds, double totalTimeInSeconds, const std::string &playerState = "") override;
+
+    /*!
+     * @brief Get this recording's resume point. The value will be obtained from the backend if it supports server-side resume points.
+     * @return the resume point.
+     */
+    CBookmark GetResumePoint() const override;
+
+    /*!
+     * @brief Get this recording's local resume point. The value will not be obtained from the backend even if it supports server-side resume points.
+     * @return the resume point.
+     */
+    CBookmark GetLocalResumePoint() const { return CVideoInfoTag::GetResumePoint(); }
 
     /*!
      * @brief Retrieve the edit decision list (EDL) of a recording on the backend.
@@ -181,8 +184,48 @@ namespace PVR
      */
     void Update(const CPVRRecording &tag);
 
+    /*!
+     * @brief Retrieve the recording start as UTC time
+     * @return the recording start time
+     */
     const CDateTime &RecordingTimeAsUTC(void) const { return m_recordingTime; }
+
+    /*!
+     * @brief Retrieve the recording start as local time
+     * @return the recording start time
+     */
     const CDateTime &RecordingTimeAsLocalTime(void) const;
+
+    /*!
+     * @brief Retrieve the recording end as UTC time
+     * @return the recording end time
+     */
+    CDateTime EndTimeAsUTC() const;
+
+    /*!
+     * @brief Retrieve the recording end as local time
+     * @return the recording end time
+     */
+    CDateTime EndTimeAsLocalTime() const;
+
+    /*!
+     * @brief Check whether this recording has an expiration time
+     * @return True if the recording has an expiration time, false otherwise
+     */
+    bool HasExpirationTime() const { return m_iLifetime > 0; }
+
+    /*!
+     * @brief Retrieve the recording expiration time as local time
+     * @return the recording expiration time
+     */
+    CDateTime ExpirationTimeAsLocalTime() const;
+
+    /*!
+     * @brief Check whether this recording will immediately expire if the given lifetime value would be set
+     * @param iLifetime The lifetime value to check
+     * @return True if the recording would immediately expire, false otherwiese
+     */
+    bool WillBeExpiredWithNewLifetime(int iLifetime) const;
 
     /*!
      * @brief Retrieve the recording title from the URL path
@@ -190,12 +233,6 @@ namespace PVR
      * @return Title of the recording
      */
     static std::string GetTitleFromURL(const std::string &url);
-
-    /*!
-     * @brief Copy some information from the client to the given video info tag
-     * @param target video info tag to which the information will be copied
-     */
-    void CopyClientInfo(CVideoInfoTag *target) const;
 
     /*!
      * @brief If deleted but can be undeleted it is true
@@ -235,7 +272,45 @@ namespace PVR
      * @brief Retrieve the recording Episode Name
      * @note Returns an empty string if no Episode Name was provided by the PVR client
      */
-    std::string EpisodeName(void) const { return m_strShowTitle; };
+    std::string EpisodeName(void) const { return m_strShowTitle; }
+
+    /*!
+     * @brief check whether this recording is currently in progress
+     * @return true if the recording is in progress, false otherwise
+     */
+    bool IsInProgress() const;
+
+    /*!
+    * @brief set the genre for this recording.
+    * @param iGenreType The genre type ID. If set to EPG_GENRE_USE_STRING, set genre to the value provided with strGenre. Otherwise, compile the genre string from the values given by iGenreType and iGenreSubType
+    * @param iGenreSubType The genre subtype ID
+    * @param strGenre The genre
+    */
+   void SetGenre(int iGenreType, int iGenreSubType, const std::string &strGenre);
+
+    /*!
+     * @brief Get the genre type ID of this event.
+     * @return The genre type ID.
+     */
+    int GenreType(void) const { return m_iGenreType; }
+
+    /*!
+     * @brief Get the genre subtype ID of this event.
+     * @return The genre subtype ID.
+     */
+    int GenreSubType(void) const { return m_iGenreSubType; }
+
+    /*!
+     * @brief Get the genre as human readable string.
+     * @return The genre.
+     */
+    const std::vector<std::string> Genre(void) const { return m_genre; }
+
+    /*!
+     * @brief Get the genre(s) of this event as formatted string.
+     * @return The genres label.
+     */
+   const std::string GetGenresLabel() const;
 
   private:
     CDateTime    m_recordingTime; /*!< start time of the recording */
@@ -244,8 +319,10 @@ namespace PVR
     unsigned int m_iEpgEventId;   /*!< epg broadcast id associated with this recording */
     int          m_iChannelUid;   /*!< channel uid associated with this recording */
     bool         m_bRadio;        /*!< radio or tv recording */
+    int          m_iGenreType = 0;    /*!< genre type */
+    int          m_iGenreSubType = 0; /*!< genre subtype */
+    mutable XbmcThreads::EndTime m_resumePointRefetchTimeout;
 
     void UpdatePath(void);
-    void DisplayError(PVR_ERROR err) const;
   };
 }

@@ -1,27 +1,15 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include <windows.h>
 #include <process.h>
-#include "threads/platform/win/Win32Exception.h"
 #include "platform/win32/WIN32Util.h"
+#include "utils/log.h"
 
 void CThread::SpawnThread(unsigned stacksize)
 {
@@ -31,13 +19,13 @@ void CThread::SpawnThread(unsigned stacksize)
   m_ThreadOpaque.handle = (HANDLE)_beginthreadex(NULL, stacksize, &staticThread, this, CREATE_SUSPENDED, &threadId);
   if (m_ThreadOpaque.handle == NULL)
   {
-    if (logger) logger->Log(LOGERROR, "%s - fatal error %d creating thread", __FUNCTION__, GetLastError());
+    CLog::Log(LOGERROR, "%s - fatal error %d creating thread", __FUNCTION__, GetLastError());
     return;
   }
   m_ThreadId = threadId;
 
   if (ResumeThread(m_ThreadOpaque.handle) == -1)
-    if (logger) logger->Log(LOGERROR, "%s - fatal error %d resuming thread", __FUNCTION__, GetLastError());
+    CLog::Log(LOGERROR, "%s - fatal error %d resuming thread", __FUNCTION__, GetLastError());
 
 }
 
@@ -75,13 +63,16 @@ void CThread::SetThreadInfo()
   }
 
   CWIN32Util::SetThreadLocalLocale(true); // avoid crashing with setlocale(), see https://connect.microsoft.com/VisualStudio/feedback/details/794122
-
-    win32_exception::install_handler();
 }
 
 ThreadIdentifier CThread::GetCurrentThreadId()
 {
   return ::GetCurrentThreadId();
+}
+
+ThreadIdentifier CThread::GetDisplayThreadId(const ThreadIdentifier tid)
+{
+  return tid;
 }
 
 bool CThread::IsCurrentThread(const ThreadIdentifier tid)
@@ -160,6 +151,10 @@ bool CThread::WaitForThreadExit(unsigned int milliseconds)
 
 int64_t CThread::GetAbsoluteUsage()
 {
+#ifdef TARGET_WINDOWS_STORE
+  // GetThreadTimes is available since 10.0.15063 only
+  return 0;
+#else
   CSingleLock lock(m_CriticalSection);
 
   if (!m_ThreadOpaque.handle)
@@ -173,6 +168,7 @@ int64_t CThread::GetAbsoluteUsage()
     time += (((uint64_t)KernelTime.dwHighDateTime) << 32) + ((uint64_t)KernelTime.dwLowDateTime);
   }
   return time;
+#endif
 }
 
 float CThread::GetRelativeUsage()
@@ -196,6 +192,4 @@ float CThread::GetRelativeUsage()
 
 void CThread::SetSignalHandlers()
 {
-  // install win32 exception translator
-  win32_exception::install_handler();
 }

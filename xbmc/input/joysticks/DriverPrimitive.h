@@ -1,31 +1,25 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
- *      http://kodi.tv
+ *  Copyright (C) 2014-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this Program; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
 #pragma once
 
 #include "JoystickTypes.h"
+#include "input/mouse/MouseTypes.h"
+#include "input/keyboard/KeyboardTypes.h"
 
 #include <stdint.h>
 
+namespace KODI
+{
 namespace JOYSTICK
 {
   /*!
+   * \ingroup joystick
    * \brief Basic driver element associated with input events
    *
    * Driver input (bools, floats and enums) is split into primitives that better
@@ -53,10 +47,21 @@ namespace JOYSTICK
    *
    *    Semiaxis:
    *       - driver index
+   *       - center (-1, 0 or 1)
    *       - semiaxis direction (positive/negative)
+   *       - range (1 or 2)
    *
    *    Motor:
    *       - driver index
+   *
+   *    Key:
+   *       - keycode
+   *
+   *    Mouse button:
+   *       - driver index
+   *
+   *    Relative pointer:
+   *       - pointer direction
    *
    * For more info, see "Chapter 2. Joystick drivers" in the documentation
    * thread: http://forum.kodi.tv/showthread.php?tid=257764
@@ -84,7 +89,22 @@ namespace JOYSTICK
      * \brief Construct a driver primitive representing the positive or negative
      *        half of an axis
      */
-    CDriverPrimitive(unsigned int axisIndex, SEMIAXIS_DIRECTION direction);
+    CDriverPrimitive(unsigned int axisIndex, int center, SEMIAXIS_DIRECTION direction, unsigned int range);
+
+    /*!
+     * \brief Construct a driver primitive representing a key on a keyboard
+     */
+    CDriverPrimitive(KEYBOARD::KeySymbol keycode);
+
+    /*!
+     * \brief Construct a driver primitive representing a mouse button
+     */
+    CDriverPrimitive(MOUSE::BUTTON_ID index);
+
+    /*!
+     * \brief Construct a driver primitive representing a relative pointer
+     */
+    CDriverPrimitive(RELATIVE_POINTER_DIRECTION direction);
 
     bool operator==(const CDriverPrimitive& rhs) const;
     bool operator<(const CDriverPrimitive& rhs) const;
@@ -100,7 +120,13 @@ namespace JOYSTICK
     PRIMITIVE_TYPE Type(void) const { return m_type; }
 
     /*!
-     * \brief The index used by the driver (valid for all types)
+     * \brief The index used by the joystick driver
+     *
+     * Valid for:
+     *   - buttons
+     *   - hats
+     *   - semiaxes
+     *   - motors
      */
     unsigned int Index(void) const { return m_driverIndex; }
 
@@ -110,9 +136,34 @@ namespace JOYSTICK
     HAT_DIRECTION HatDirection(void) const { return m_hatDirection; }
 
     /*!
+     * \brief The location of the zero point of the semiaxis
+     */
+    int Center() const { return m_center; }
+
+    /*!
      * \brief The semiaxis direction (valid for semiaxes)
      */
     SEMIAXIS_DIRECTION SemiAxisDirection(void) const { return m_semiAxisDirection; }
+
+    /*!
+     * \brief The distance between the center and the farthest valid value (valid for semiaxes)
+     */
+    unsigned int Range() const { return m_range; }
+
+    /*!
+     * \brief The keybord symbol (valid for keys)
+     */
+    KEYBOARD::KeySymbol Keycode() const { return m_keycode; }
+
+    /*!
+     * \brief The mouse button ID (valid for mouse buttons)
+     */
+    MOUSE::BUTTON_ID MouseButton() const { return static_cast<MOUSE::BUTTON_ID>(m_driverIndex); }
+
+    /*!
+     * \brief The relative pointer direction (valid for relative pointers)
+     */
+    RELATIVE_POINTER_DIRECTION PointerDirection() const { return m_pointerDirection; }
 
     /*!
      * \brief Test if an driver primitive is valid
@@ -121,13 +172,19 @@ namespace JOYSTICK
      *
      *   1) for hats, it is a cardinal direction
      *   2) for semi-axes, it is a positive or negative direction
+     *   3) for keys, the keycode is non-empty
      */
     bool IsValid(void) const;
 
   private:
-    PRIMITIVE_TYPE     m_type;
-    unsigned int       m_driverIndex;
-    HAT_DIRECTION      m_hatDirection;
-    SEMIAXIS_DIRECTION m_semiAxisDirection;
+    PRIMITIVE_TYPE     m_type = PRIMITIVE_TYPE::UNKNOWN;
+    unsigned int       m_driverIndex = 0;
+    HAT_DIRECTION      m_hatDirection = HAT_DIRECTION::NONE;
+    int                m_center = 0;
+    SEMIAXIS_DIRECTION m_semiAxisDirection = SEMIAXIS_DIRECTION::ZERO;
+    unsigned int       m_range = 1;
+    KEYBOARD::KeySymbol m_keycode = XBMCK_UNKNOWN;
+    RELATIVE_POINTER_DIRECTION m_pointerDirection = RELATIVE_POINTER_DIRECTION::NONE;
   };
+}
 }

@@ -1,19 +1,17 @@
 include ../../Makefile.include
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile
 
 # lib name, version
 LIBNAME=automake
-VERSION=1.15
+VERSION=1.15.1
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
 CONFIGURE=./configure --prefix=$(NATIVEPREFIX)
 
-LIBDYLIB=$(PLATFORM)/automake
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
+LIBDYLIB=$(PLATFORM)/bin/automake
 
 all: .installed-$(PLATFORM)
 

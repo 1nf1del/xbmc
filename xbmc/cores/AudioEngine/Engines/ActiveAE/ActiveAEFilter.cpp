@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2010-2016 Team Kodi
- *      http://xbmc.org
+ *  Copyright (C) 2010-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "ActiveAEFilter.h"
@@ -25,6 +13,7 @@
 
 extern "C" {
 #include "libavfilter/avfilter.h"
+#include "libavcodec/avcodec.h"
 #include "libavfilter/buffersink.h"
 #include "libavfilter/buffersrc.h"
 #include "libswresample/swresample.h"
@@ -54,7 +43,8 @@ void CActiveAEFilter::Init(AVSampleFormat fmt, int sampleRate, uint64_t channelL
   m_sampleRate = sampleRate;
   m_channelLayout = channelLayout;
   m_tempo = 1.0;
-  m_bufferedSamples = 0;
+  m_SamplesIn = 0;
+  m_SamplesOut = 0;
 }
 
 bool CActiveAEFilter::SetTempo(float tempo)
@@ -75,7 +65,8 @@ bool CActiveAEFilter::SetTempo(float tempo)
     return false;
   }
 
-  m_bufferedSamples = 0;
+  m_SamplesIn = 0;
+  m_SamplesOut = 0;
   return true;
 }
 
@@ -90,8 +81,8 @@ bool CActiveAEFilter::CreateFilterGraph()
     return false;
   }
 
-  AVFilter* srcFilter = avfilter_get_by_name("abuffer");
-  AVFilter* outFilter = avfilter_get_by_name("abuffersink");
+  const AVFilter* srcFilter = avfilter_get_by_name("abuffer");
+  const AVFilter* outFilter = avfilter_get_by_name("abuffersink");
 
   std::string args = StringUtils::Format("time_base=1/%d:sample_rate=%d:sample_fmt=%s:channel_layout=0x%" PRIx64,
                                          m_sampleRate,
@@ -120,7 +111,7 @@ bool CActiveAEFilter::CreateFilterGraph()
 
 bool CActiveAEFilter::CreateAtempoFilter()
 {
-  AVFilter *atempo;
+  const AVFilter *atempo;
 
   atempo = avfilter_get_by_name("atempo");
   m_pFilterCtxAtempo = avfilter_graph_alloc_filter(m_pFilterGraph, atempo, "atempo");
@@ -189,7 +180,8 @@ void CActiveAEFilter::CloseFilter()
   if (m_pConvertCtx)
     swr_free(&m_pConvertCtx);
 
-  m_bufferedSamples = 0;
+  m_SamplesIn = 0;
+  m_SamplesOut = 0;
 }
 
 int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_t **src_buffer, int src_samples, int src_bufsize)
@@ -208,24 +200,25 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
 
   if (src_samples)
   {
-    m_bufferedSamples += src_samples;
-
     AVFrame *frame = av_frame_alloc();
     if (!frame)
       return -1;
 
     int channels = av_get_channel_layout_nb_channels(m_channelLayout);
 
-    av_frame_set_channel_layout(frame, m_channelLayout);
-    av_frame_set_channels(frame, channels);
-    av_frame_set_sample_rate(frame, m_sampleRate);
+    frame->channel_layout = m_channelLayout;
+    frame->channels = channels;
+    frame->sample_rate = m_sampleRate;
     frame->nb_samples = src_samples;
     frame->format = m_sampleFormat;
+
+    m_SamplesIn += src_samples;
 
     result = avcodec_fill_audio_frame(frame, channels, m_sampleFormat,
                              src_buffer[0], src_bufsize, 16);
     if (result < 0)
     {
+      av_frame_free(&frame);
       CLog::Log(LOGERROR, "CActiveAEFilter::ProcessFilter - avcodec_fill_audio_frame failed");
       return -1;
     }
@@ -275,12 +268,14 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
       return -1;
     }
 
+    m_SamplesOut = outFrame->pts;
+
     if (m_needConvert)
     {
       av_frame_unref(m_pOutFrame);
       m_pOutFrame->format = m_sampleFormat;
-      av_frame_set_channel_layout(m_pOutFrame, m_channelLayout);
-      av_frame_set_sample_rate(m_pOutFrame, m_sampleRate);
+      m_pOutFrame->channel_layout = m_channelLayout;
+      m_pOutFrame->sample_rate = m_sampleRate;
       result = swr_convert_frame(m_pConvertCtx, m_pOutFrame, m_pConvertFrame);
       av_frame_unref(m_pConvertFrame);
       if (result < 0)
@@ -313,9 +308,6 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
       m_hasData = false;
     }
 
-    m_bufferedSamples -= samples * m_tempo;
-    if (m_bufferedSamples < 0)
-      m_bufferedSamples = 0;
     return samples;
   }
 
@@ -342,5 +334,10 @@ bool CActiveAEFilter::IsActive()
 
 int CActiveAEFilter::GetBufferedSamples()
 {
-  return m_bufferedSamples;
+  int ret = m_SamplesIn - (m_SamplesOut * m_tempo);
+  if (m_hasData)
+  {
+    ret += (m_pOutFrame->nb_samples - m_sampleOffset);
+  }
+  return ret;
 }

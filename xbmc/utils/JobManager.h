@@ -1,23 +1,12 @@
-#pragma once
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
 
 #include <queue>
 #include <vector>
@@ -31,12 +20,30 @@ class CJobManager;
 class CJobWorker : public CThread
 {
 public:
-  CJobWorker(CJobManager *manager);
-  virtual ~CJobWorker();
+  explicit CJobWorker(CJobManager *manager);
+  ~CJobWorker() override;
 
-  void Process();
+  void Process() override;
 private:
   CJobManager  *m_jobManager;
+};
+
+template<typename F>
+class CLambdaJob : public CJob
+{
+public:
+  CLambdaJob(F&& f) : m_f(std::forward<F>(f)) {};
+  bool DoWork() override
+  {
+    m_f();
+    return true;
+  }
+  bool operator==(const CJob *job) const override
+  {
+    return this == job;
+  };
+private:
+  F m_f;
 };
 
 /*!
@@ -57,7 +64,7 @@ class CJobQueue: public IJobCallback
   class CJobPointer
   {
   public:
-    CJobPointer(CJob *job)
+    explicit CJobPointer(CJob *job)
     {
       m_job = job;
       m_id = 0;
@@ -92,7 +99,7 @@ public:
    Cancels any in-process jobs, and destroys the job queue.
    \sa CJob
    */
-  virtual ~CJobQueue();
+  ~CJobQueue() override;
 
   /*!
    \brief Add a job to the queue
@@ -101,6 +108,15 @@ public:
    \sa CJob
    */
   bool AddJob(CJob *job);
+
+  /*!
+   \brief Add a function f to this job queue
+   */
+  template<typename F>
+  void Submit(F&& f)
+  {
+    AddJob(new CLambdaJob<F>(std::forward<F>(f)));
+  }
 
   /*!
    \brief Cancel a job in the queue
@@ -138,15 +154,15 @@ public:
 
    \sa CJobManager, IJobCallback and  CJob
    */
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
 protected:
   /*!
    \brief Returns if we still have jobs waiting to be processed
-   NOTE: This function does not take into account the jobs that are currently processing 
+   NOTE: This function does not take into account the jobs that are currently processing
    */
   bool QueueEmpty() const;
-  
+
 private:
   void QueueNextJob();
 
@@ -157,7 +173,7 @@ private:
 
   unsigned int m_jobsAtOnce;
   CJob::PRIORITY m_priority;
-  CCriticalSection m_section;
+  mutable CCriticalSection m_section;
   bool m_lifo;
 };
 
@@ -172,7 +188,7 @@ private:
 
  \sa CJob and IJobCallback
  */
-class CJobManager
+class CJobManager final
 {
   class CWorkItem
   {
@@ -207,20 +223,6 @@ class CJobManager
     CJob::PRIORITY m_priority;
   };
 
-  template<typename F>
-  class CLambdaJob : public CJob
-  {
-  public:
-    CLambdaJob(F&& f) : m_f(std::forward<F>(f)) {};
-    bool DoWork() override
-    {
-      m_f();
-      return true;
-    }
-  private:
-    F m_f;
-  };
-
 public:
   /*!
    \brief The only way through which the global instance of the CJobManager should be accessed.
@@ -242,9 +244,18 @@ public:
    \brief Add a function f to this job manager for asynchronously execution.
    */
   template<typename F>
-  void Submit(F&& f)
+  void Submit(F&& f, CJob::PRIORITY priority = CJob::PRIORITY_LOW)
   {
-    AddJob(new CLambdaJob<F>(std::forward<F>(f)), nullptr);
+    AddJob(new CLambdaJob<F>(std::forward<F>(f)), nullptr, priority);
+  }
+
+  /*!
+   \brief Add a function f to this job manager for asynchronously execution.
+   */
+  template<typename F>
+  void Submit(F&& f, IJobCallback *callback, CJob::PRIORITY priority = CJob::PRIORITY_LOW)
+  {
+    AddJob(new CLambdaJob<F>(std::forward<F>(f)), callback, priority);
   }
 
   /*!
@@ -300,6 +311,7 @@ public:
 protected:
   friend class CJobWorker;
   friend class CJob;
+  friend class CJobQueue;
 
   /*!
    \brief Get a new job to process. Blocks until a new job is available, or a timeout has occurred.
@@ -329,11 +341,10 @@ protected:
   bool  OnJobProgress(unsigned int progress, unsigned int total, const CJob *job) const;
 
 private:
-  // private construction, and no assignements; use the provided singleton methods
+  // private construction, and no assignments; use the provided singleton methods
   CJobManager();
-  CJobManager(const CJobManager&);
-  CJobManager const& operator=(CJobManager const&);
-  virtual ~CJobManager();
+  CJobManager(const CJobManager&) = delete;
+  CJobManager const& operator=(CJobManager const&) = delete;
 
   /*! \brief Pop a job off the job queue and add to the processing queue ready to process
    \return the job to process, NULL if no jobs are available
@@ -350,12 +361,12 @@ private:
   typedef std::vector<CWorkItem>   Processing;
   typedef std::vector<CJobWorker*> Workers;
 
-  JobQueue   m_jobQueue[CJob::PRIORITY_HIGH+1];
+  JobQueue   m_jobQueue[CJob::PRIORITY_DEDICATED + 1];
   bool       m_pauseJobs;
   Processing m_processing;
   Workers    m_workers;
 
-  CCriticalSection m_section;
+  mutable CCriticalSection m_section;
   CEvent           m_jobEvent;
   bool             m_running;
 };

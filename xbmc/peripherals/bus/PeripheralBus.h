@@ -1,23 +1,12 @@
-#pragma once
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -43,13 +32,13 @@ namespace PERIPHERALS
   class CPeripheralBus : protected CThread
   {
   public:
-    CPeripheralBus(const std::string &threadname, CPeripherals *manager, PeripheralBusType type);
-    virtual ~CPeripheralBus(void) { Clear(); }
+    CPeripheralBus(const std::string &threadname, CPeripherals& manager, PeripheralBusType type);
+    ~CPeripheralBus(void) override { Clear(); }
 
     /*!
      * @return The bus type
      */
-    const PeripheralBusType Type(void) const { return m_type; }
+    PeripheralBusType Type(void) const { return m_type; }
 
     /*!
      * @return True if this bus needs to be polled for changes, false if this bus performs updates via callbacks
@@ -59,14 +48,14 @@ namespace PERIPHERALS
     /*!
     * \brief Initialize the properties of a peripheral with a known location
     */
-    virtual bool InitializeProperties(CPeripheral* peripheral) { return true; }
+    virtual bool InitializeProperties(CPeripheral& peripheral);
 
     /*!
      * @brief Get the instance of the peripheral at the given location.
      * @param strLocation The location.
      * @return The peripheral or NULL if it wasn't found.
      */
-    virtual CPeripheral *GetPeripheral(const std::string &strLocation) const;
+    virtual PeripheralPtr GetPeripheral(const std::string &strLocation) const;
 
     /*!
      * @brief Check whether a peripheral is present at the given location.
@@ -76,15 +65,22 @@ namespace PERIPHERALS
     virtual bool HasPeripheral(const std::string &strLocation) const;
 
     /*!
+     * @brief Check if the bus supports the given feature
+     * @param feature The feature to check for
+     * @return True if the bus supports the feature, false otherwise
+     */
+    virtual bool SupportsFeature(PeripheralFeature feature) const { return false; }
+
+    /*!
      * @brief Get all peripheral instances that have the given feature.
      * @param results The list of results.
      * @param feature The feature to search for.
      * @return The number of devices that have been found.
      */
-    virtual int GetPeripheralsWithFeature(std::vector<CPeripheral *> &results, const PeripheralFeature feature) const;
+    virtual unsigned int GetPeripheralsWithFeature(PeripheralVector &results, const PeripheralFeature feature) const;
 
-    virtual size_t GetNumberOfPeripherals() const;
-    virtual size_t GetNumberOfPeripheralsWithId(const int iVendorId, const int iProductId) const;
+    virtual unsigned int GetNumberOfPeripherals() const;
+    virtual unsigned int GetNumberOfPeripheralsWithId(const int iVendorId, const int iProductId) const;
 
     /*!
      * @brief Get all features that are supported by devices on this bus.
@@ -144,25 +140,35 @@ namespace PERIPHERALS
      * @param strPath The path to the peripheral.
      * @return The peripheral or NULL if it wasn't found.
      */
-    virtual CPeripheral *GetByPath(const std::string &strPath) const;
+    virtual PeripheralPtr GetByPath(const std::string &strPath) const;
 
     /*!
      * @brief Register a new peripheral on this bus.
      * @param peripheral The peripheral to register.
      */
-    virtual void Register(CPeripheral *peripheral);
+    virtual void Register(const PeripheralPtr& peripheral);
 
     virtual bool FindComPort(std::string &strLocation) { return false; }
-
-    virtual bool IsInitialised(void) const { CSingleLock lock(m_critSection); return m_bInitialised; }
 
     /*!
      * \brief Poll for events
      */
     virtual void ProcessEvents(void) { }
 
+    /*!
+    * \brief Initialize button mapping
+    * \return True if button mapping is enabled for this bus
+    */
+    virtual void EnableButtonMapping() { }
+
+    /*!
+     * \brief Power off the specified device
+     * \param strLocation The device's location
+     */
+    virtual void PowerOff(const std::string& strLocation) { }
+
   protected:
-    virtual void Process(void);
+    void Process(void) override;
     virtual bool ScanForDevices(void);
     virtual void UnregisterRemovedDevices(const PeripheralScanResults &results);
     virtual void RegisterNewDevices(const PeripheralScanResults &results);
@@ -174,15 +180,14 @@ namespace PERIPHERALS
      */
     virtual bool PerformDeviceScan(PeripheralScanResults &results) = 0;
 
-    std::vector<CPeripheral *> m_peripherals;
+    PeripheralVector           m_peripherals;
     int                        m_iRescanTime;
-    bool                       m_bInitialised;
-    bool                       m_bIsStarted;
     bool                       m_bNeedsPolling; /*!< true when this bus needs to be polled for new devices, false when it uses callbacks to notify this bus of changed */
-    CPeripherals *const        m_manager;
+    CPeripherals&              m_manager;
     const PeripheralBusType    m_type;
-    CCriticalSection           m_critSection;
+    mutable CCriticalSection   m_critSection;
     CEvent                     m_triggerEvent;
   };
   using PeripheralBusPtr = std::shared_ptr<CPeripheralBus>;
+  using PeripheralBusVector = std::vector<PeripheralBusPtr>;
 }

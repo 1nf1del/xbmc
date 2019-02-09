@@ -1,22 +1,10 @@
 /*
-*      Copyright (C) 2015 Team XBMC
-*      http://xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*/
+ *  Copyright (C) 2015-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
+ *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
+ */
 
 #include <string>
 #include <vector>
@@ -30,8 +18,7 @@ ILanguageInvoker::ILanguageInvoker(ILanguageInvocationHandler *invocationHandler
     m_invocationHandler(invocationHandler)
 { }
 
-ILanguageInvoker::~ILanguageInvoker()
-{ }
+ILanguageInvoker::~ILanguageInvoker() = default;
 
 bool ILanguageInvoker::Execute(const std::string &script, const std::vector<std::string> &arguments /* = std::vector<std::string>() */)
 {
@@ -48,7 +35,7 @@ bool ILanguageInvoker::Stop(bool abort /* = false */)
 
 bool ILanguageInvoker::IsActive() const
 {
-  return GetState() > InvokerStateUninitialized && GetState() < InvokerStateDone;
+  return GetState() > InvokerStateUninitialized && GetState() < InvokerStateScriptDone;
 }
 
 bool ILanguageInvoker::IsRunning() const
@@ -84,13 +71,13 @@ void ILanguageInvoker::onAbortRequested()
 void ILanguageInvoker::onExecutionFailed()
 {
   if (m_invocationHandler)
-    m_invocationHandler->OnScriptEnded(this);
+    m_invocationHandler->OnExecutionEnded(this);
 }
 
 void ILanguageInvoker::onExecutionDone()
 {
   if (m_invocationHandler)
-    m_invocationHandler->OnScriptEnded(this);
+    m_invocationHandler->OnExecutionEnded(this);
 }
 
 void ILanguageInvoker::onExecutionFinalized()

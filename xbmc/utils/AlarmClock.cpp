@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "AlarmClock.h"
@@ -30,16 +18,15 @@
 #include "messaging/ApplicationMessenger.h"
 #include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
+#include "ServiceBroker.h"
 
 using namespace KODI::MESSAGING;
 
-CAlarmClock::CAlarmClock() : CThread("AlarmClock"), m_bIsRunning(false)
+CAlarmClock::CAlarmClock() : CThread("AlarmClock")
 {
 }
 
-CAlarmClock::~CAlarmClock()
-{
-}
+CAlarmClock::~CAlarmClock() = default;
 
 void CAlarmClock::Start(const std::string& strName, float n_secs, const std::string& strCommand, bool bSilent /* false */, bool bLoop /* false */)
 {
@@ -74,9 +61,9 @@ void CAlarmClock::Start(const std::string& strName, float n_secs, const std::str
   EventPtr alarmClockActivity(new CNotificationEvent(labelAlarmClock,
     StringUtils::Format(g_localizeStrings.Get(labelStarted).c_str(), static_cast<int>(event.m_fSecs) / 60, static_cast<int>(event.m_fSecs) % 60)));
   if (bSilent)
-    CEventLog::GetInstance().Add(alarmClockActivity);
+    CServiceBroker::GetEventLog().Add(alarmClockActivity);
   else
-    CEventLog::GetInstance().AddWithNotification(alarmClockActivity);
+    CServiceBroker::GetEventLog().AddWithNotification(alarmClockActivity);
 
   event.watch.StartZero();
   CSingleLock lock(m_events);
@@ -119,13 +106,13 @@ void CAlarmClock::Stop(const std::string& strName, bool bSilent /* false */)
   {
     EventPtr alarmClockActivity(new CNotificationEvent(labelAlarmClock, strMessage));
     if (bSilent)
-      CEventLog::GetInstance().Add(alarmClockActivity);
+      CServiceBroker::GetEventLog().Add(alarmClockActivity);
     else
-      CEventLog::GetInstance().AddWithNotification(alarmClockActivity);
+      CServiceBroker::GetEventLog().AddWithNotification(alarmClockActivity);
   }
   else
   {
-    CApplicationMessenger::GetInstance().SendMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, iter->second.m_strCommand);
+    CApplicationMessenger::GetInstance().PostMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, iter->second.m_strCommand);
     if (iter->second.m_loop)
     {
       iter->second.watch.Reset();

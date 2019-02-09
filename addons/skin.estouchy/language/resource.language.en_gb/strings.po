@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -53,7 +53,6 @@ msgid "Recent"
 msgstr ""
 
 #empty string with id 31012
-#Used for subtitle button in the OSD
 
 msgctxt "#31013"
 msgid "Movies"
@@ -63,13 +62,35 @@ msgctxt "#31014"
 msgid "Episodes"
 msgstr ""
 
-#empty string with id 31015
+msgctxt "#31015"
+msgid "Player info"
+msgstr ""
 
 msgctxt "#31016"
 msgid "Albums"
 msgstr ""
 
-#empty strings from id 31017 to 31023
+msgctxt "#31017"
+msgid "PVR info"
+msgstr ""
+
+msgctxt "#31018"
+msgid "Player process info"
+msgstr ""
+
+msgctxt "#31019"
+msgid "Video decoder"
+msgstr ""
+
+msgctxt "#31020"
+msgid "Pixel format"
+msgstr ""
+
+msgctxt "#31021"
+msgid "System memory usage"
+msgstr ""
+
+#empty strings from id 31022 to 31023
 
 msgctxt "#31024"
 msgid "Page"
@@ -83,7 +104,6 @@ msgid "Info List"
 msgstr ""
 
 #empty strings from id 31031 to 31037
-#Extra labels
 
 msgctxt "#31038"
 msgid "Login"
@@ -93,7 +113,11 @@ msgctxt "#31039"
 msgid "Updated:"
 msgstr ""
 
-#empty strings from id 31040 to 31043
+#empty strings from id 31040 to 31042
+
+msgctxt "#31043"
+msgid "PAUSED"
+msgstr ""
 
 msgctxt "#31044"
 msgid "FAST FORWARD"
@@ -179,7 +203,7 @@ msgstr ""
 #empty strings from id 31304 to 31308
 
 msgctxt "#31309"
-msgid "Memory Used:"
+msgid "System Memory Used:"
 msgstr ""
 
 #empty strings from id 31310 to 31319
@@ -269,26 +293,19 @@ msgctxt "#31421"
 msgid "Select your Kodi user Profile[CR]to login and continue"
 msgstr ""
 
-#empty strings from id 31422 to 31499
-#Skin Setting Headers
-
-msgctxt "#31500"
-msgid "Home Menu Catagory Buttons"
-msgstr ""
-
-msgctxt "#31501"
-msgid "Home Page Add-on Quick Links"
-msgstr ""
-
-msgctxt "#31502"
-msgid "Miscellaneous Options"
-msgstr ""
-
-#empty strings from id 31503 to 31549
+#empty strings from id 31422 to 31547
 #Skin Setting Options
 
+msgctxt "#31548"
+msgid "Home menu"
+msgstr ""
+
+msgctxt "#31549"
+msgid "Home Add-ons"
+msgstr ""
+
 msgctxt "#31550"
-msgid "Home Screen Weather Info and button"
+msgid "Backgrounds"
 msgstr ""
 
 msgctxt "#31551"

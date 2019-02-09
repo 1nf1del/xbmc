@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2015 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2015-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "HTTPPythonWsgiInvoker.h"
@@ -32,7 +20,7 @@
 
 #define MODULE      "xbmc"
 
-#define RUNSCRIPT_PRAMBLE \
+#define RUNSCRIPT_PREAMBLE \
   "" \
   "import " MODULE "\n" \
   "xbmc.abortRequested = False\n" \
@@ -69,14 +57,15 @@
 
 #if defined(TARGET_ANDROID)
 #define RUNSCRIPT \
-  RUNSCRIPT_PRAMBLE RUNSCRIPT_SETUPTOOLS_HACK RUNSCRIPT_POSTSCRIPT
+  RUNSCRIPT_PREAMBLE RUNSCRIPT_SETUPTOOLS_HACK RUNSCRIPT_POSTSCRIPT
 #else
 #define RUNSCRIPT \
-  RUNSCRIPT_PRAMBLE RUNSCRIPT_POSTSCRIPT
+  RUNSCRIPT_PREAMBLE RUNSCRIPT_POSTSCRIPT
 #endif
 
 namespace PythonBindings {
   void initModule_xbmc(void);
+  void initModule_xbmcaddon(void);
   void initModule_xbmcwsgi(void);
 }
 
@@ -91,10 +80,9 @@ typedef struct
 static PythonModule PythonModules[] =
 {
   { "xbmc",           initModule_xbmc },
+  { "xbmcaddon",      initModule_xbmcaddon  },
   { "xbmcwsgi",       initModule_xbmcwsgi }
 };
-
-#define PythonModulesSize sizeof(PythonModules) / sizeof(PythonModule)
 
 CHTTPPythonWsgiInvoker::CHTTPPythonWsgiInvoker(ILanguageInvocationHandler* invocationHandler, HTTPPythonRequest* request)
   : CHTTPPythonInvoker(invocationHandler, request),
@@ -281,9 +269,10 @@ cleanup:
   if (pyResultIterator != NULL)
   {
     // Call optional close method on iterator
-    if (PyObject_HasAttrString(pyResultIterator, (char*)"close") == 1)
+    if (PyObject_HasAttrString(pyResultIterator, "close") == 1)
     {
-      if (PyObject_CallMethod(pyResultIterator, (char*)"close", NULL) == NULL)
+      //! @bug libpython < 3.4 isn't const correct
+      if (PyObject_CallMethod(pyResultIterator, const_cast<char*>("close"), NULL) == NULL)
         CLog::Log(LOGERROR, "CHTTPPythonWsgiInvoker: failed to close iterator object for WSGI script \"%s\"", script.c_str());
     }
     Py_DECREF(pyResultIterator);
@@ -307,8 +296,8 @@ std::map<std::string, CPythonInvoker::PythonModuleInitialization> CHTTPPythonWsg
   static std::map<std::string, PythonModuleInitialization> modules;
   if (modules.empty())
   {
-    for (size_t i = 0; i < PythonModulesSize; i++)
-      modules.insert(std::make_pair(PythonModules[i].name, PythonModules[i].initialization));
+    for (const PythonModule& pythonModule : PythonModules)
+      modules.insert(std::make_pair(pythonModule.name, pythonModule.initialization));
   }
 
   return modules;
@@ -351,8 +340,11 @@ std::map<std::string, std::string> CHTTPPythonWsgiInvoker::createCgiEnvironment(
   environment.insert(std::make_pair("PATH_INFO", pathInfo));
 
   // QUERY_STRING
-  CURL url(httpRequest->url);
-  environment.insert(std::make_pair("QUERY_STRING", url.GetOptions()));
+  size_t iOptions = httpRequest->url.find_first_of('?');
+  if (iOptions != std::string::npos)
+    environment.insert(std::make_pair("QUERY_STRING", httpRequest->url.substr(iOptions+1)));
+  else
+    environment.insert(std::make_pair("QUERY_STRING", ""));
 
   // CONTENT_TYPE
   std::string headerValue;

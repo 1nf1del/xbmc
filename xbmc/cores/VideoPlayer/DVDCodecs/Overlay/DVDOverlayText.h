@@ -1,24 +1,12 @@
-#pragma once
-
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
 
 #include "DVDOverlay.h"
 #include <stdlib.h>
@@ -38,7 +26,7 @@ public:
   class CElement
   {
   public:
-    CElement(ElementType type)
+    explicit CElement(ElementType type)
     {
       pNext = NULL;
       m_type = type;
@@ -50,9 +38,7 @@ public:
       m_type = src.m_type;
     }
 
-    virtual ~CElement()
-    {
-    }
+    virtual ~CElement() = default;
 
     bool IsElementType(ElementType type) { return (type == m_type); }
 
@@ -74,7 +60,7 @@ public:
       else
         m_text.assign(strText, size);
     }
-    CElementText(const std::string& text) : CElement(ELEMENT_TYPE_TEXT),
+    explicit CElementText(const std::string& text) : CElement(ELEMENT_TYPE_TEXT),
       m_text(text)
     {
     }
@@ -90,9 +76,7 @@ public:
     const char* GetTextPtr()
     { return m_text.c_str(); }
 
-    virtual ~CElementText()
-    {  }
-
+    ~CElementText() override = default;
   };
 
   class CElementProperty : public CElement
@@ -135,11 +119,11 @@ public:
       else if(e->IsElementType(ELEMENT_TYPE_PROPERTY))
         AddElement(new CElementProperty(*static_cast<CElementProperty*>(e)));
       else
-        AddElement(new CElement(*static_cast<CElement*>(e)));
+        AddElement(new CElement(*e));
     }
   }
 
-  virtual ~CDVDOverlayText()
+  ~CDVDOverlayText() override
   {
     while (m_pHead)
     {
@@ -149,7 +133,7 @@ public:
     }
   }
 
-  virtual CDVDOverlayText* Clone()
+  CDVDOverlayText* Clone() override
   {
     return new CDVDOverlayText(*this);
   }

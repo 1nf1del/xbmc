@@ -1,7 +1,7 @@
 include ../../Makefile.include
 DEPS= ../../Makefile.include Makefile pillow-crosscompile.patch
 
-VERSION.TXT := $(CORE_SOURCE_DIR)/version.txt
+VERSION.TXT := $(CMAKE_SOURCE_DIR)/version.txt
 APP_NAME=$(shell awk '/APP_NAME/ {print tolower($$2)}' $(VERSION.TXT))
 
 # lib name, version
@@ -25,9 +25,11 @@ LDSHARED:=$(CC) -bundle -undefined dynamic_lookup $(LDFLAGS)
 CROSSFLAGS=PYTHONXCPREFIX="$(PREFIX)" CC="$(CC) $(CFLAGS)" CCSHARED="$(CC) $(CFLAGS) $(PYTHON_O)" LDFLAGS="$(LDFLAGS)" PYTHONPATH="$(PREFIX)/lib/python2.7/site-packages/" LDSHARED="$(LDSHARED)"
 endif
 
-LIBDYLIB=$(PLATFORM)/dist/PIL-$(VERSION)-py2.7-$(OS)-$(CPU).egg
+LIBDYLIB=$(PLATFORM)/dist/Pillow-$(VERSION)-py2.7-$(OS)-$(CPU).egg
 ifeq ($(OS),android)
 LIBDYLIB=$(PREFIX)/share/$(APP_NAME)/addons/script.module.pil/lib/PIL/_imaging.so
+else ifeq (darwin, $(findstring darwin, $(HOST)))
+LIBDYLIB=$(PLATFORM)/dist/Pillow-$(VERSION)-py2.7-macosx-10.4-x86_64.egg
 endif
 
 all: .installed-$(PLATFORM)
@@ -48,7 +50,7 @@ $(LIBDYLIB): $(PLATFORM)
 ifeq ($(OS),android)
 	mkdir -p $(PREFIX)/share/$(APP_NAME)/addons/script.module.pil/lib
 	cd $(PLATFORM); $(CROSSFLAGS) $(NATIVEPREFIX)/bin/python setup.py install --install-lib  $(PREFIX)/share/$(APP_NAME)/addons/script.module.pil
-	cd $(PREFIX)/share/$(APP_NAME)/addons/script.module.pil/lib && unzip ../Pillow-*.egg
+	cd $(PREFIX)/share/$(APP_NAME)/addons/script.module.pil/lib && unzip -o ../Pillow-*.egg
 	cd $(PREFIX)/share/$(APP_NAME)/addons/script.module.pil && rm -rf Pillow-*.egg
 else
 	cd $(PLATFORM); $(CROSSFLAGS) $(NATIVEPREFIX)/bin/python setup.py install --prefix=$(PREFIX)

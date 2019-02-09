@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -30,19 +30,23 @@ msgstr "Caps[CR]Lock"
 
 msgctxt "#31005"
 msgid "Visualization Options"
-msgstr "Visualization Options"
+msgstr "Параметры візуалізацыі"
 
 msgctxt "#31006"
 msgid "Visualization Presets"
-msgstr "Visualization Presets"
+msgstr "Прадвызначаныя налады візуалізацыі"
 
 msgctxt "#31007"
 msgid "Context Menu"
-msgstr "Context Menu"
+msgstr "Кантэкстнае меню"
 
 msgctxt "#31009"
 msgid "Working..."
 msgstr "Ідзе праца..."
+
+msgctxt "#31011"
+msgid "Recent"
+msgstr "Апошняе"
 
 msgctxt "#31013"
 msgid "Movies"
@@ -55,6 +59,10 @@ msgstr "Эпізоды"
 msgctxt "#31016"
 msgid "Albums"
 msgstr "Альбомы"
+
+msgctxt "#31017"
+msgid "PVR info"
+msgstr "Звесткі PVR"
 
 msgctxt "#31024"
 msgid "Page"
@@ -132,10 +140,6 @@ msgctxt "#31303"
 msgid "Data provider"
 msgstr "Data provider"
 
-msgctxt "#31309"
-msgid "Memory Used:"
-msgstr "Занята памяці:"
-
 msgctxt "#31320"
 msgid "Last Logged In"
 msgstr "Апошні ўваход"
@@ -168,17 +172,9 @@ msgctxt "#31421"
 msgid "Select your Kodi user Profile[CR]to login and continue"
 msgstr "Select your Kodi user Profile[CR]to login and continue"
 
-msgctxt "#31501"
-msgid "Home Page Add-on Quick Links"
-msgstr "Home Page Add-on Quick Links"
-
-msgctxt "#31502"
-msgid "Miscellaneous Options"
-msgstr "Miscellaneous Options"
-
 msgctxt "#31550"
-msgid "Home Screen Weather Info and button"
-msgstr "Home Screen Weather Info and button"
+msgid "Backgrounds"
+msgstr "Backgrounds"
 
 msgctxt "#31551"
 msgid "Add-on Shortcut"

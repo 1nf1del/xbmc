@@ -1,31 +1,18 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 #if !defined(__arm__) && !defined(__aarch64__)
 #import <unistd.h>
 #import <sys/mount.h>
 
-#define BOOL XBMC_BOOL 
 #include "utils/log.h"
 #include "CompileInfo.h"
-#include "windowing/WindowingFactory.h"
-#undef BOOL
+#include "ServiceBroker.h"
+#include "windowing/osx/WinSystemOSX.h"
 
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
@@ -41,29 +28,27 @@
 #import "platform/darwin/AutoPool.h"
 
 
-//#define MAX_DISPLAYS 32
-//static NSWindow* blankingWindows[MAX_DISPLAYS];
-
-//display link for display managment
-static CVDisplayLinkRef displayLink = NULL; 
+//display link for display management
+static CVDisplayLinkRef displayLink = NULL;
 
 CGDirectDisplayID Cocoa_GetDisplayIDFromScreen(NSScreen *screen);
 
 NSOpenGLContext* Cocoa_GL_GetCurrentContext(void)
 {
-  return (NSOpenGLContext *)g_Windowing.GetNSOpenGLContext();
+  CWinSystemOSX *winSystem = dynamic_cast<CWinSystemOSX*>(CServiceBroker::GetWinSystem());
+  return (NSOpenGLContext *)winSystem->GetNSOpenGLContext();
 }
 
 uint32_t Cocoa_GL_GetCurrentDisplayID(void)
 {
   // Find which display we are on from the current context (default to main display)
   CGDirectDisplayID display_id = kCGDirectMainDisplay;
-  
+
   NSOpenGLContext* context = Cocoa_GL_GetCurrentContext();
   if (context)
   {
     NSView* view;
-  
+
     view = [context view];
     if (view)
     {
@@ -77,7 +62,7 @@ uint32_t Cocoa_GL_GetCurrentDisplayID(void)
       }
     }
   }
-  
+
   return((uint32_t)display_id);
 }
 
@@ -85,8 +70,8 @@ bool Cocoa_CVDisplayLinkCreate(void *displayLinkcallback, void *displayLinkConte
 {
   CVReturn status = kCVReturnError;
   CGDirectDisplayID display_id;
-    
-  // OpenGL Flush synchronised with vertical retrace                       
+
+  // OpenGL Flush synchronised with vertical retrace
   GLint swapInterval = 1;
   [[NSOpenGLContext currentContext] setValues:&swapInterval forParameter:NSOpenGLCPSwapInterval];
 
@@ -108,7 +93,7 @@ bool Cocoa_CVDisplayLinkCreate(void *displayLinkcallback, void *displayLinkConte
     // Activate the display link
     status = CVDisplayLinkStart(displayLink);
   }
-  
+
   return(status == kCVReturnSuccess);
 }
 
@@ -129,42 +114,11 @@ void Cocoa_CVDisplayLinkUpdate(void)
   if (displayLink)
   {
     CGDirectDisplayID display_id;
-    
+
     display_id = (CGDirectDisplayID)Cocoa_GL_GetCurrentDisplayID();
     // Set the display link to the current display
     CVDisplayLinkSetCurrentCGDisplay(displayLink, display_id);
   }
-}
-
-double Cocoa_GetCVDisplayLinkRefreshPeriod(void)
-{
-  double fps = 60.0;
-
-  if (displayLink && CVDisplayLinkIsRunning(displayLink) )
-  {
-    CVTime cvtime;
-    cvtime = CVDisplayLinkGetNominalOutputVideoRefreshPeriod(displayLink);
-    if (cvtime.timeValue > 0)
-      fps = (double)cvtime.timeScale / (double)cvtime.timeValue;
-    
-    fps = CVDisplayLinkGetActualOutputVideoRefreshPeriod(displayLink);
-    if (fps > 0.0)
-      fps = 1.0 / fps;
-    else
-      fps = 60.0;
-  }
-  else
-  {
-    
-    CGDisplayModeRef display_mode;
-    display_mode = CGDisplayCopyDisplayMode((CGDirectDisplayID)Cocoa_GL_GetCurrentDisplayID());
-    fps = CGDisplayModeGetRefreshRate(display_mode);
-    CGDisplayModeRelease(display_mode);
-    if (fps <= 0.0)
-      fps = 60.0;
-  }
-  
-  return(fps);
 }
 
 void Cocoa_DoAppleScript(const char* scriptSource)
@@ -178,7 +132,7 @@ void Cocoa_DoAppleScript(const char* scriptSource)
   returnDescriptor = [scriptObject executeAndReturnError: &errorDict];
   [scriptObject release];
 }
-  
+
 void Cocoa_DoAppleScriptFile(const char* filePath)
 {
   NSString* scriptFile = [NSString stringWithUTF8String:filePath];
@@ -217,38 +171,6 @@ void Cocoa_DoAppleScriptFile(const char* filePath)
   [appleScript release];
 }
 
-const char* Cocoa_GetIconFromBundle(const char *_bundlePath, const char* _iconName)
-{
-  NSString* bundlePath = [NSString stringWithUTF8String:_bundlePath];
-  NSString* iconName = [NSString stringWithUTF8String:_iconName];
-  NSBundle* bundle = [NSBundle bundleWithPath:bundlePath];
-  NSString* iconPath = [bundle pathForResource:iconName ofType:@"icns"];
-  NSString* bundleIdentifier = [bundle bundleIdentifier];
-
-  if (![[NSFileManager defaultManager] fileExistsAtPath:iconPath]) return NULL;
-
-  // Get the path to the target PNG icon
-  NSString* appName = [NSString stringWithUTF8String:CCompileInfo::GetAppName()];
-  NSMutableString *tmpStr = [NSMutableString stringWithString:@"~/Library/Application Support/"];
-  [tmpStr appendString:appName];
-  [tmpStr appendString:@"/userdata/Thumbnails/%@-%@.png"];
-  NSString* pngFile = [[NSString stringWithFormat:tmpStr,
-    bundleIdentifier, iconName] stringByExpandingTildeInPath];
-
-  // If no PNG has been created, open the ICNS file & convert
-  if (![[NSFileManager defaultManager] fileExistsAtPath:pngFile])
-  {
-    NSImage* icon = [[NSImage alloc] initWithContentsOfFile:iconPath];
-    if (!icon) return NULL;
-    NSBitmapImageRep* rep = [[NSBitmapImageRep alloc] initWithData:[icon TIFFRepresentation]];
-    NSData* png = [rep representationUsingType:NSPNGFileType properties:nil];
-    [png writeToFile:pngFile atomically:YES];
-    [rep release];
-    [icon release];
-  }
-  return [pngFile UTF8String];
-}
-
 char* Cocoa_MountPoint2DeviceName(char *path)
 {
   CCocoaAutoPool pool;
@@ -260,7 +182,7 @@ char* Cocoa_MountPoint2DeviceName(char *path)
   {
     struct statfs *mntbufp;
     int i, mounts;
-    
+
     // find a match for /Volumes/<disk name>
     mounts = getmntinfo(&mntbufp, MNT_WAIT);  // NOT THREAD SAFE!
     for (i = 0; i < mounts; i++)
@@ -285,12 +207,12 @@ bool Cocoa_GetVolumeNameFromMountPoint(const std::string &mountPoint, std::strin
   NSFileManager *fm = [NSFileManager defaultManager];
   NSArray *mountedVolumeUrls = [fm mountedVolumeURLsIncludingResourceValuesForKeys:@[ NSURLVolumeNameKey, NSURLPathKey ] options:0];
   bool resolved = false;
-  
+
   for (NSURL *volumeURL in mountedVolumeUrls)
   {
     NSString *path;
     BOOL success = [volumeURL getResourceValue:&path forKey:NSURLPathKey error:nil];
-    
+
     if (success && path != nil)
     {
       std::string mountpoint = [path UTF8String];
@@ -310,54 +232,6 @@ bool Cocoa_GetVolumeNameFromMountPoint(const std::string &mountPoint, std::strin
   return resolved;
 }
 
-/*
-void SetPIDFrontProcess(pid_t pid) {
-    ProcessSerialNumber psn;
-
-    GetProcessForPID(pid, &psn );
-    SetFrontProcess(&psn);
-}
-*/
-
-/*
-// Synchronize buffer swaps with vertical refresh rate (NSTimer)
-- (void)prepareOpenGL
-{
-    GLint swapInt = 1;
-    [[self openGLContext] setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
-}
-
-// Put our timer in -awakeFromNib, so it can start up right from the beginning
--(void)awakeFromNib
-{
-    renderTimer = [[NSTimer timerWithTimeInterval:0.001   //a 1ms time interval
-                                target:self
-                                selector:@selector(timerFired:)
-                                userInfo:nil
-                                repeats:YES];
-
-    [[NSRunLoop currentRunLoop] addTimer:renderTimer 
-                                forMode:NSDefaultRunLoopMode];
-    [[NSRunLoop currentRunLoop] addTimer:renderTimer 
-                                forMode:NSEventTrackingRunLoopMode]; //Ensure timer fires during resize
-}
-
-// Timer callback method
-- (void)timerFired:(id)sender
-{
-    // It is good practice in a Cocoa application to allow the system to send the -drawRect:
-    // message when it needs to draw, and not to invoke it directly from the timer. 
-    // All we do here is tell the display it needs a refresh
-    [self setNeedsDisplay:YES];
-}
-
-[newWindow setFrameAutosaveName:@"some name"] 
-
-and the window's frame is automatically saved for you in the application 
-defaults each time its location changes. 
-*/
-
-
 void Cocoa_HideMouse()
 {
   [NSCursor hide];
@@ -369,37 +243,6 @@ void Cocoa_ShowMouse()
 }
 
 //---------------------------------------------------------------------------------
-bool Cocoa_GPUForDisplayIsNvidiaPureVideo3()
-{
-  bool result = false;
-  std::string str;
-  const char *cstr;
-  CGDirectDisplayID display_id;
-
-  // try for display we are running on
-  display_id = (CGDirectDisplayID)Cocoa_GL_GetCurrentDisplayID();
- 
-  io_registry_entry_t dspPort = CGDisplayIOServicePort(display_id);
-  // if fails, go for main display
-  if (dspPort == MACH_PORT_NULL)
-    dspPort = CGDisplayIOServicePort(kCGDirectMainDisplay);
-
-  CFDataRef model;
-  model = (CFDataRef)IORegistryEntrySearchCFProperty(dspPort, kIOServicePlane, CFSTR("model"),
-    kCFAllocatorDefault,kIORegistryIterateRecursively | kIORegistryIterateParents);
-
-  if (model)
-  {
-    cstr = (const char*)CFDataGetBytePtr(model);
-    if (cstr && std::string(cstr).find("NVIDIA GeForce 9400") != std::string::npos)
-      result = true;
-
-    CFRelease(model);
-  }
-
-  return(result);
-}
-
 const char *Cocoa_Paste()
 {
   NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
@@ -410,7 +253,7 @@ const char *Cocoa_Paste()
       return [contents UTF8String];
     }
   }
-  
+
   return NULL;
 }
 

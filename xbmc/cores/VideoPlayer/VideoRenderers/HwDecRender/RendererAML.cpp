@@ -1,89 +1,116 @@
 /*
- *      Copyright (C) 2007-2015 Team Kodi
- *      http://kodi.tv
+ *  Copyright (C) 2007-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Kodi; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "RendererAML.h"
 
-#if defined(HAS_LIBAMCODEC)
-#include "cores/IPlayer.h"
-#include "windowing/egl/EGLWrapper.h"
 #include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAmlogic.h"
 #include "cores/VideoPlayer/DVDCodecs/Video/AMLCodec.h"
 #include "utils/log.h"
-#include "utils/GLUtils.h"
 #include "utils/SysfsUtils.h"
+#include "utils/ScreenshotAML.h"
 #include "settings/MediaSettings.h"
-#include "windowing/WindowingFactory.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderCapture.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
+#include "settings/AdvancedSettings.h"
 
 CRendererAML::CRendererAML()
+ : m_prevVPts(-1)
+ , m_bConfigured(false)
 {
-  m_prevPts = -1;
+  CLog::Log(LOGINFO, "Constructing CRendererAML");
 }
 
 CRendererAML::~CRendererAML()
 {
+  Reset();
+}
+
+CBaseRenderer* CRendererAML::Create(CVideoBuffer *buffer)
+{
+  if (buffer && dynamic_cast<CAMLVideoBuffer*>(buffer))
+    return new CRendererAML();
+  return nullptr;
+}
+
+bool CRendererAML::Register()
+{
+  VIDEOPLAYER::CRendererFactory::RegisterRenderer("amlogic", CRendererAML::Create);
+  return true;
+}
+
+bool CRendererAML::Configure(const VideoPicture &picture, float fps, unsigned int orientation)
+{
+  m_sourceWidth = picture.iWidth;
+  m_sourceHeight = picture.iHeight;
+  m_renderOrientation = orientation;
+
+  m_iFlags = GetFlagsChromaPosition(picture.chroma_position) |
+             GetFlagsColorMatrix(picture.color_space, picture.iWidth, picture.iHeight) |
+             GetFlagsColorPrimaries(picture.color_primaries) |
+             GetFlagsStereoMode(picture.stereoMode);
+
+  // Calculate the input frame aspect ratio.
+  CalculateFrameAspectRatio(picture.iDisplayWidth, picture.iDisplayHeight);
+  SetViewMode(m_videoSettings.m_ViewMode);
+  ManageRenderArea();
+
+  m_bConfigured = true;
+
+  return true;
+}
+
+CRenderInfo CRendererAML::GetRenderInfo()
+{
+  CRenderInfo info;
+  info.max_buffer_size = m_numRenderBuffers;
+  info.optimal_buffer_size = m_numRenderBuffers;
+  info.opaque_pointer = (void *)this;
+  return info;
 }
 
 bool CRendererAML::RenderCapture(CRenderCapture* capture)
 {
   capture->BeginRender();
   capture->EndRender();
+  CScreenshotAML::CaptureVideoFrame((unsigned char *)capture->GetRenderBuffer(), capture->GetWidth(), capture->GetHeight());
   return true;
 }
 
-void CRendererAML::AddVideoPictureHW(DVDVideoPicture &picture, int index)
+void CRendererAML::AddVideoPicture(const VideoPicture &picture, int index)
 {
-  YUVBUFFER &buf = m_buffers[index];
-  if (picture.amlcodec)
-    buf.hwDec = picture.amlcodec->Retain();
+  ReleaseBuffer(index);
+
+  BUFFER &buf(m_buffers[index]);
+  if (picture.videoBuffer)
+  {
+    buf.videoBuffer = picture.videoBuffer;
+    buf.videoBuffer->Acquire();
+  }
 }
 
 void CRendererAML::ReleaseBuffer(int idx)
 {
-  YUVBUFFER &buf = m_buffers[idx];
-  if (buf.hwDec)
+  BUFFER &buf(m_buffers[idx]);
+  if (buf.videoBuffer)
   {
-    CDVDAmlogicInfo *amli = static_cast<CDVDAmlogicInfo *>(buf.hwDec);
-    SAFE_RELEASE(amli);
-    buf.hwDec = NULL;
+    CAMLVideoBuffer *amli(dynamic_cast<CAMLVideoBuffer*>(buf.videoBuffer));
+    if (amli)
+    {
+      if (amli->m_amlCodec)
+      {
+        amli->m_amlCodec->ReleaseFrame(amli->m_bufferIndex, true);
+        amli->m_amlCodec = nullptr; // Released
+      }
+      amli->Release();
+    }
+    buf.videoBuffer = nullptr;
   }
-}
-
-int CRendererAML::GetImageHook(YV12Image *image, int source, bool readonly)
-{
-  return source;
-}
-
-bool CRendererAML::IsGuiLayer()
-{
-  return false;
-}
-
-bool CRendererAML::Supports(EINTERLACEMETHOD method)
-{
-  return false;
-}
-
-bool CRendererAML::Supports(ESCALINGMETHOD method)
-{
-  return false;
 }
 
 bool CRendererAML::Supports(ERENDERFEATURE feature)
@@ -91,6 +118,8 @@ bool CRendererAML::Supports(ERENDERFEATURE feature)
   if (feature == RENDERFEATURE_ZOOM ||
       feature == RENDERFEATURE_CONTRAST ||
       feature == RENDERFEATURE_BRIGHTNESS ||
+      feature == RENDERFEATURE_NONLINSTRETCH ||
+      feature == RENDERFEATURE_VERTICAL_SHIFT ||
       feature == RENDERFEATURE_STRETCH ||
       feature == RENDERFEATURE_PIXEL_RATIO ||
       feature == RENDERFEATURE_ROTATION)
@@ -99,42 +128,34 @@ bool CRendererAML::Supports(ERENDERFEATURE feature)
   return false;
 }
 
-EINTERLACEMETHOD CRendererAML::AutoInterlaceMethod()
+void CRendererAML::Reset()
 {
-  return VS_INTERLACEMETHOD_NONE;
+  m_prevVPts = -1;
+  for (int i = 0 ; i < m_numRenderBuffers ; ++i)
+  {
+    if (m_buffers[i].videoBuffer)
+    {
+      m_buffers[i].videoBuffer->Release();
+      m_buffers[i].videoBuffer = nullptr;
+    }
+  }
 }
 
-bool CRendererAML::LoadShadersHook()
-{
-  CLog::Log(LOGNOTICE, "GL: Using AML render method");
-  m_textureTarget = GL_TEXTURE_2D;
-  m_renderMethod = RENDER_BYPASS;
-  return false;
-}
-
-bool CRendererAML::RenderHook(int index)
-{
-  return true;// nothing to be done for aml
-}
-
-bool CRendererAML::RenderUpdateVideoHook(bool clear, DWORD flags, DWORD alpha)
+void CRendererAML::RenderUpdate(int index, int index2, bool clear, unsigned int flags, unsigned int alpha)
 {
   ManageRenderArea();
 
-  CDVDAmlogicInfo *amli = static_cast<CDVDAmlogicInfo *>(m_buffers[m_iYV12RenderBuffer].hwDec);
-  if (amli && amli->GetOmxPts() != m_prevPts)
+  CAMLVideoBuffer *amli = dynamic_cast<CAMLVideoBuffer *>(m_buffers[index].videoBuffer);
+  if(amli && amli->m_amlCodec)
   {
-    m_prevPts = amli->GetOmxPts();
-    SysfsUtils::SetInt("/sys/module/amvideo/parameters/omx_pts", amli->GetOmxPts());
-
-    CAMLCodec *amlcodec = amli->getAmlCodec();
-    if (amlcodec)
-      amlcodec->SetVideoRect(m_sourceRect, m_destRect);
+    int pts = amli->m_omxPts;
+    if (pts != m_prevVPts)
+    {
+      amli->m_amlCodec->ReleaseFrame(amli->m_bufferIndex);
+      amli->m_amlCodec->SetVideoRect(m_sourceRect, m_destRect);
+      amli->m_amlCodec = nullptr; //Mark frame as processed
+      m_prevVPts = pts;
+    }
   }
-
-  usleep(10000);
-
-  return true;
+  CAMLCodec::PollFrame();
 }
-
-#endif

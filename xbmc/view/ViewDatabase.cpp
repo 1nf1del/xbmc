@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "ViewDatabase.h"
@@ -24,7 +12,6 @@
 
 #include "dbwrappers/dataset.h"
 #include "SortFileItem.h"
-#include "system.h"
 #include "utils/LegacyPathTranslation.h"
 #include "utils/log.h"
 #include "utils/SortUtils.h"
@@ -33,13 +20,11 @@
 #include "view/ViewState.h"
 
 #ifdef TARGET_POSIX
-#include "linux/ConvUtils.h" // GetLastError()
+#include "platform/linux/ConvUtils.h"
 #endif
-CViewDatabase::CViewDatabase(void)
-{ }
+CViewDatabase::CViewDatabase(void) = default;
 
-CViewDatabase::~CViewDatabase(void)
-{ }
+CViewDatabase::~CViewDatabase(void) = default;
 
 bool CViewDatabase::Open()
 {
@@ -62,7 +47,7 @@ void CViewDatabase::CreateTables()
 
 void CViewDatabase::CreateAnalytics()
 {
-  CLog::Log(LOGINFO, "%s - creating indicies", __FUNCTION__);
+  CLog::Log(LOGINFO, "%s - creating indices", __FUNCTION__);
   m_pDS->exec("CREATE INDEX idxViews ON view(path)");
   m_pDS->exec("CREATE INDEX idxViewsWindow ON view(window)");
 }
@@ -99,8 +84,7 @@ void CViewDatabase::UpdateTables(int version)
   if (version < 6)
   {
     // convert the "path" table
-    m_pDS->exec("CREATE TABLE tmp_view AS SELECT * FROM view");
-    m_pDS->exec("DROP TABLE view");
+    m_pDS->exec("ALTER TABLE view RENAME TO tmp_view");
 
     m_pDS->exec("CREATE TABLE view ("
                 "idView integer primary key,"
@@ -111,7 +95,7 @@ void CViewDatabase::UpdateTables(int version)
                 "sortOrder integer,"
                 "sortAttributes integer,"
                 "skin text)\n");
-    
+
     m_pDS->query("SELECT * FROM tmp_view");
     while (!m_pDS->eof())
     {

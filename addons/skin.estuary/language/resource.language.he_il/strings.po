@@ -1,11 +1,11 @@
 # Kodi Media Center language file
 # Addon Name: Estuary
 # Addon id: skin.estuary
-# Addon Provider: phil65, Piers
+# Addon Provider: phil65, Ichabod Fletchman
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -38,19 +38,23 @@ msgstr "שינוי מצב"
 
 msgctxt "#31005"
 msgid "Watch as 2D"
-msgstr "צפייה כ־2D"
+msgstr "צפייה כ-2D"
 
 msgctxt "#31006"
 msgid "Random movies"
-msgstr "סרטים אקראיים"
+msgstr "‎סרטים אקראיים"
 
 msgctxt "#31007"
 msgid "Unwatched movies"
 msgstr "סרטים שלא נצפו"
 
+msgctxt "#31008"
+msgid "Enable category widgets"
+msgstr "אפשר יישומוני קטגוריה"
+
 msgctxt "#31009"
 msgid "Download icons"
-msgstr "הורד אייקונים"
+msgstr "הורד סמלילים"
 
 msgctxt "#31010"
 msgid "In progress movies"
@@ -58,11 +62,11 @@ msgstr "סרטים בצפייה"
 
 msgctxt "#31011"
 msgid "Most played albums"
-msgstr "אלבומים שנוגנו לאחרונה"
+msgstr "אלבומים שנוגנו הכי הרבה"
 
 msgctxt "#31012"
 msgid "Random albums"
-msgstr "אלבומים אקראיים"
+msgstr "‎אלבומים אקראיים"
 
 msgctxt "#31013"
 msgid "Random artists"
@@ -70,7 +74,7 @@ msgstr "אמנים אקראיים"
 
 msgctxt "#31014"
 msgid "Unplayed albums"
-msgstr "אלבומים שלא הופעלו"
+msgstr "אלבומים שלא נוגנו"
 
 msgctxt "#31015"
 msgid "Recent recordings"
@@ -80,9 +84,13 @@ msgctxt "#31016"
 msgid "Recently played channels"
 msgstr "ערוצים שהופעלו לאחרונה"
 
+msgctxt "#31017"
+msgid "Rated"
+msgstr "מדורג"
+
 msgctxt "#31018"
-msgid "Most played channels"
-msgstr "ערוצים שהפועלו הכי הרבה"
+msgid "Recently played channels"
+msgstr "ערוצים שהופעלו לאחרונה"
 
 msgctxt "#31019"
 msgid "Forecast"
@@ -100,37 +108,37 @@ msgctxt "#31022"
 msgid "Sort by"
 msgstr "מיון לפי"
 
+msgctxt "#31023"
+msgid "Viewtype"
+msgstr "הצג סוג"
+
 msgctxt "#31024"
-msgid "Next tracks"
-msgstr "השיר הבא"
+msgid "Choose rating to display for media items"
+msgstr "בחר דירוג להצגה עבור פריטי מדיה"
 
 msgctxt "#31025"
 msgid "No favourites found. You can add any item from media views to this list by using the context menu."
-msgstr "לא נמצאו מועדפים. ניתן להוסיף כל פריט מדיה לרשימה זו ע\"י שימוש בתפריט משנה."
+msgstr "לא נמצאו מועדפים. ניתן להוסיף כל פריט מדיה לרשימה זו ע\"י שימוש בתפריט הקישור."
 
 msgctxt "#31026"
-msgid "Go to albums"
-msgstr "מעבר לאלבום"
-
-msgctxt "#31027"
-msgid "Go to songs"
-msgstr "מעבר לשירים"
+msgid "Timeshift"
+msgstr "הסט זמן"
 
 msgctxt "#31028"
 msgid "Show fanart"
-msgstr "הראה אומנות מעריצים"
+msgstr "הצג  פאנארט"
 
 msgctxt "#31029"
 msgid "Last logged in"
-msgstr "חובר לאחרונה"
+msgstr "התחברות לאחרונה ב-"
 
 msgctxt "#31030"
-msgid "Memory used"
-msgstr "זיכרון בשימוש"
+msgid "System memory usage"
+msgstr "שימוש בזיכרון המערכת"
 
 msgctxt "#31031"
 msgid "Version info"
-msgstr "מידע על הגרסה"
+msgstr "מידע גרסה"
 
 msgctxt "#31032"
 msgid "Order"
@@ -138,7 +146,7 @@ msgstr "הזמנה"
 
 msgctxt "#31033"
 msgid "Your rating"
-msgstr "הציון שלך"
+msgstr "הדירוג שלך"
 
 msgctxt "#31034"
 msgid "Extended info"
@@ -146,15 +154,11 @@ msgstr "מידע מורחב"
 
 msgctxt "#31035"
 msgid "Pages"
-msgstr "עמודים"
+msgstr "‎דפים"
 
 msgctxt "#31036"
 msgid "items"
 msgstr "פריטים"
-
-msgctxt "#31037"
-msgid "Tracklist"
-msgstr "רשימת שירים"
 
 msgctxt "#31038"
 msgid "Rewind"
@@ -164,10 +168,6 @@ msgctxt "#31039"
 msgid "Fast forward"
 msgstr "הרצה קדימה"
 
-msgctxt "#31040"
-msgid "Cancel update"
-msgstr "ביטול עדכון"
-
 msgctxt "#31041"
 msgid "Camera manufacturer"
 msgstr "יצרן מצלמה"
@@ -176,21 +176,21 @@ msgctxt "#31042"
 msgid "Playlist options"
 msgstr "אפשרויות רשימת ניגון"
 
+msgctxt "#31043"
+msgid "Set the type and add rules to create a smart playlist. These playlists are dynamic and include all media items from your database which apply to your chosen rules."
+msgstr "הגדר את הסוג והוסף כללים ליצירת רשימת השמעה חכמה. רשימות השמעה אלו דינמיות וכוללות את כל פריטי המדיה ממסד הנתונים שלך, החלים בכללים שבחרת."
+
 msgctxt "#31044"
 msgid "Add group"
-msgstr "הוספת קבוצה"
+msgstr "הוסף קבוצה"
 
 msgctxt "#31045"
 msgid "Rename group"
-msgstr "שינוי שם קבוצה"
+msgstr "שנה שם קבוצה"
 
 msgctxt "#31046"
 msgid "Delete group"
-msgstr "מחיקת קבוצה"
-
-msgctxt "#31047"
-msgid "Read more..."
-msgstr "קרא עוד..."
+msgstr "מחק קבוצה"
 
 msgctxt "#31048"
 msgid "Available"
@@ -198,59 +198,43 @@ msgstr "זמין"
 
 msgctxt "#31050"
 msgid "Press [B]OK[/B] to stop"
-msgstr "לחץ על[B]אישור[B] כדי לעצור"
-
-msgctxt "#31051"
-msgid "Toggle language"
-msgstr "הסתר שפה"
+msgstr "לחץ על [B]אישור[/B] כדי לעצור"
 
 msgctxt "#31052"
 msgid "filtered"
-msgstr "סינון"
+msgstr "מסונן"
 
 msgctxt "#31053"
 msgid "Arial based"
-msgstr "מבוסס Arial"
+msgstr "מבוסס אריאל"
 
-msgctxt "#31055"
-msgid "Subtitle download"
-msgstr "הורדת כתובית"
+msgctxt "#31054"
+msgid "Press [B]Left[/B] to rewind, or [B]Right[/B] to fast-forward"
+msgstr "לחצו על [B]שמאלה[/B] כדי להריץ אחורה, או [B]ימינה[/B] כדי להריץ קדימה"
 
 msgctxt "#31056"
 msgid "Go to playlist"
-msgstr "מעבר לרשימת השמעה"
+msgstr "מעבר לרשימת ניגון"
 
 msgctxt "#31057"
 msgid "Show login screen on startup"
-msgstr "הצג מסך כניסה בעת ההפעלה."
+msgstr "הצג מסך כניסה בעת ההפעלה"
 
 msgctxt "#31058"
 msgid "Automatic Login on startup"
-msgstr "התחברות אוטומטית בהפעלה"
-
-msgctxt "#31059"
-msgid "Updates available"
-msgstr "קיימים עדכונים"
-
-msgctxt "#31060"
-msgid "minutes"
-msgstr "דקות"
+msgstr "התחברות אוטומטית באיתחול"
 
 msgctxt "#31061"
 msgid "Main menu items"
-msgstr "פריטי תפריט"
+msgstr "פריטי תפריט ראשי"
 
 msgctxt "#31062"
-msgid "Shortcuts to the \"Files\" sections of each media type. Go there to add additional sources for your databases."
-msgstr "קיצורי דרך למסך \"קבצים\" של כל סוג מדיה. שם ניתן להוסיף מקורות נוספים למסד הנתונים."
+msgid "Choose weather fanart pack"
+msgstr "בחר חבילת פאנארט למזג האוויר"
 
 msgctxt "#31063"
 msgid "Sections"
-msgstr "סעיפים"
-
-msgctxt "#31064"
-msgid "unwatched"
-msgstr "לא נצפה"
+msgstr "מקטעים"
 
 msgctxt "#31065"
 msgid "Video playlist"
@@ -272,57 +256,29 @@ msgctxt "#31069"
 msgid "Last Updated"
 msgstr "עודכן לאחרונה"
 
-msgctxt "#31070"
-msgid "Add media sources"
-msgstr "הוסף מקורות מדיה"
-
 msgctxt "#31071"
 msgid "by"
 msgstr "על ידי"
 
 msgctxt "#31072"
 msgid "Power Options"
-msgstr "אפשרויות חשמל"
-
-msgctxt "#31073"
-msgid "Titles"
-msgstr "כותרות"
-
-msgctxt "#31074"
-msgid "Library root"
-msgstr "ספריה"
+msgstr "אפשרויות כיבוי"
 
 msgctxt "#31075"
 msgid "Movie sets"
 msgstr "מארז סרטים"
 
-msgctxt "#31076"
-msgid "Play optical disc"
-msgstr "נגן מדיה מדיסק"
-
-msgctxt "#31077"
-msgid "Previous location"
-msgstr "מיקום קודם"
-
-msgctxt "#31078"
-msgid "Next location"
-msgstr "המיקום הבא"
-
 msgctxt "#31079"
 msgid "Cast not available"
-msgstr "עופרת אינו זמין"
+msgstr "שידור אינו זמין"
 
 msgctxt "#31080"
 msgid "Ends at"
-msgstr "מסתיים ב"
-
-msgctxt "#31081"
-msgid "Album info"
-msgstr "פרטי אלבום"
+msgstr "מסתיים ב-"
 
 msgctxt "#31082"
 msgid "Lyrics add-on"
-msgstr "הרחבת מילות שירים"
+msgstr "הרחבת מילים לשירים"
 
 msgctxt "#31083"
 msgid "Lyrics add-on settings"
@@ -330,23 +286,7 @@ msgstr "הגדרות הרחבת מילים"
 
 msgctxt "#31084"
 msgid "Visualisation settings"
-msgstr "הגדרות חיזוי"
-
-msgctxt "#31085"
-msgid "Channel Group"
-msgstr "קבוצת ערוצים"
-
-msgctxt "#31086"
-msgid "Metadata"
-msgstr "נתוני מטה"
-
-msgctxt "#31087"
-msgid "Provider settings"
-msgstr "הגדרות ספק"
-
-msgctxt "#31088"
-msgid "Content scanning options"
-msgstr "הגדרות סריקת תוכן"
+msgstr "הגדרות הדמיה"
 
 msgctxt "#31089"
 msgid "Available groups"
@@ -356,25 +296,17 @@ msgctxt "#31090"
 msgid "Search trailer"
 msgstr "חפש קדימון"
 
-msgctxt "#31091"
-msgid "Download subtitles"
-msgstr "הורדת כתוביות"
-
 msgctxt "#31092"
 msgid "Video menu"
-msgstr "תפריט וידאו"
+msgstr "תפריט ווידאו"
 
 msgctxt "#31093"
 msgid "Show weather info in top bar"
 msgstr "הצג פרטי מזג אוויר בסרגל העליון"
 
-msgctxt "#31094"
-msgid "Show media flags for movies / episodes / music videos"
-msgstr "הצג דגלי מדיה עבור סרטים / פרקים / קליפים"
-
 msgctxt "#31095"
 msgid "Use slide animations"
-msgstr "אפשר הנפשות"
+msgstr "אפשר הנפשות החלקה"
 
 msgctxt "#31096"
 msgid "Local subtitle available"
@@ -386,15 +318,15 @@ msgstr "אפשרויות ערוץ"
 
 msgctxt "#31098"
 msgid "Select your Kodi user profile[CR]to login and continue"
-msgstr "יש לבחור חשבון משתמש Kodi[CR]להתחברות והמשך"
+msgstr "יש לבחור את חשבון המשתמש שלך[CR]בקודי להתחברות והמשך"
 
 msgctxt "#31099"
-msgid "Icon Wall"
-msgstr "קיר אייקון"
+msgid "IconWall"
+msgstr "קיר סמלילים"
 
 msgctxt "#31100"
 msgid "Shift"
-msgstr "Shift"
+msgstr "הזזה"
 
 msgctxt "#31101"
 msgid "InfoWall"
@@ -406,11 +338,15 @@ msgstr "קיר"
 
 msgctxt "#31103"
 msgid "Enter text here..."
-msgstr "...הכנס פה טקסט"
+msgstr "הכנס את הטקסט כאן..."
 
 msgctxt "#31104"
 msgid "Your library is currently empty. In order to populate it with your personal media, enter \"Files\" section, add a media source and configure it. After the source has been added and indexed you will be able to browse your library."
-msgstr "הספריה שלך ריקה כרגע. על מנת להוסיף לה את התכנים שלך, יש להוסיף מקורות מדיה דרך מסך \"קבצים\". לאחר שהמקור נוסף ונסרק, הוא יהיה זמין בספריה."
+msgstr "הספרייה שלך ריקה כרגע. על מנת להוסיף את התכנים שלך, יש להוסיף מקורות מדיה דרך מסך 'קבצים'. לאחר שהמקור נוסף ונסרק, הוא יהיה זמין בספרייה."
+
+msgctxt "#31105"
+msgid "Add video sources and set the appropriate content type in order to populate your video libraries."
+msgstr "הוסף מקורות וידאו והגדר את סוג התוכן המתאים כדי לאכלס את ספריות הווידאו שלך."
 
 msgctxt "#31106"
 msgid "Teletext"
@@ -420,21 +356,17 @@ msgctxt "#31107"
 msgid "WideList"
 msgstr "רשימה רחבה"
 
-msgctxt "#31108"
-msgid "Use custom global background"
-msgstr "השתמש בהגדרות רקע גלובליות"
-
-msgctxt "#31109"
-msgid "Choose image path"
-msgstr "בחירת נתיב תמונה"
-
 msgctxt "#31110"
 msgid "Enter files section"
-msgstr "הזנת שמות הקבצים"
+msgstr "הזן מקטע קבצים"
+
+msgctxt "#31111"
+msgid "View your personal pictures or download one of the many image add-ons from the official repository."
+msgstr "הצג את התמונות האישיות שלך או הורד אחת מהרחבות התמונה הרבות מהמאגר הרשמי."
 
 msgctxt "#31112"
 msgid "Toggle audio stream"
-msgstr "הסתר זרימת שמע"
+msgstr "החלף זרם שמע"
 
 msgctxt "#31113"
 msgid "Search local library"
@@ -442,23 +374,31 @@ msgstr "חפש ספרייה מקומית"
 
 msgctxt "#31114"
 msgid "Search YouTube"
-msgstr "חפש ביוטיוב"
+msgstr "חפש ביו-טיוב"
 
 msgctxt "#31115"
 msgid "Search TheMovieDB"
-msgstr "TheMovieDB-חיפוש ב"
+msgstr "חיפוש ב-TheMovieDB"
 
 msgctxt "#31116"
 msgid "Remove this main menu item"
-msgstr "מחק את פריט התפריט הזה"
+msgstr "מחק את פריט התפריט הראשי הזה"
 
 msgctxt "#31117"
 msgid "Edit nodes"
-msgstr "עריכת בלוטות"
+msgstr "עריכת צמתים"
 
 msgctxt "#31118"
 msgid "Enter add-on browser"
-msgstr "הפעל הרחבות דפדפן"
+msgstr "הפעל דפדפן הרחבות"
+
+msgctxt "#31119"
+msgid "You do not have any add-ons installed yet. Visit our add-on browser to browse through our collection and improve your Kodi experience."
+msgstr "עדיין לא מותקנות הרחבות. בקר בדפדפן ההרחבות שלנו, כדי לעיין באוסף שלנו ולשפר את חווית הקודי שלך."
+
+msgctxt "#31120"
+msgid "You did not set up a weather provider yet. In order to view weather information, choose a weather provider and set up your location."
+msgstr "עדיין לא הגדרת ספק מזג אוויר. כדי להציג מידע על מזג האוויר, בחר ספק מזג אוויר והגדר את המיקום שלך."
 
 msgctxt "#31121"
 msgid "Set weather provider"
@@ -474,28 +414,148 @@ msgstr "אותו במאי"
 
 msgctxt "#31124"
 msgid "Show images on map"
-msgstr "הראה תמונות במפה"
+msgstr "הראה תמונות על מפה"
 
 msgctxt "#31125"
 msgid "Press up for actor info"
-msgstr "בשביל מידע על השחקן up  לחץ על"
+msgstr "לחץ על למעלה לקבלת מידע על השחקן"
 
 msgctxt "#31126"
 msgid "Press OK to read plot"
-msgstr "על מנת לקרוא עלילה OK לחץ על "
+msgstr "לחץ על אישור לקריאת העלילה"
 
 msgctxt "#31127"
 msgid "Show icons"
-msgstr "הראה סמלים"
+msgstr "הראה סמלילים"
 
 msgctxt "#31128"
 msgid "Contributors"
 msgstr "תורמים"
 
-msgctxt "#31131"
-msgid "Choose home fanart pack"
-msgstr "בחירת חבילת אומנות אוהדים כבית"
+msgctxt "#31129"
+msgid "General settings applying to all areas of the skin."
+msgstr "הגדרות כלליות החלות על כל האזורים של המעטפת."
 
-msgctxt "#31133"
-msgid "Hide"
-msgstr "הסתר"
+msgctxt "#31130"
+msgid "Main menu-related settings: Configure the home screen to your likings."
+msgstr "הגדרות הקשורות לתפריט הראשי: הגדר את מסך הבית בהתאם להעדפותיך."
+
+msgctxt "#31131"
+msgid "Choose skin fanart pack"
+msgstr "בחר חבילת פאנארט למעטפת"
+
+msgctxt "#31132"
+msgid "Select Program"
+msgstr "בחר תוכנית"
+
+msgctxt "#31134"
+msgid "Remaining"
+msgstr "נותר"
+
+msgctxt "#31136"
+msgid "Click here to see latest changes..."
+msgstr "לחץ כאן לראות את השינויים האחרונים..."
+
+msgctxt "#31137"
+msgid "PVR info"
+msgstr "מידע PVR"
+
+msgctxt "#31138"
+msgid "Player process info"
+msgstr "מידע על תהליך הנגן"
+
+msgctxt "#31139"
+msgid "Video decoder"
+msgstr "מקודד ווידאו"
+
+msgctxt "#31140"
+msgid "Pixel format"
+msgstr "פורמט פיקסל"
+
+msgctxt "#31141"
+msgid "Changes for version"
+msgstr "שינויים עבור הגרסה"
+
+msgctxt "#31142"
+msgid "Play speed"
+msgstr "מהירות ניגון"
+
+msgctxt "#31143"
+msgid "You did not set up PVR yet. In order to use PVR, choose a PVR client addon and configure it. Please visit http://kodi.wiki/view/PVR to learn more."
+msgstr "אתה עדיין לא הגדרת לקוח PVR. כדי להשתמש ב-PVR, בחר בהרחבת לקוח PVR והגדר אותה. בקר בכתובת: http://kodi.wiki/view/PVR למידע נוסף."
+
+msgctxt "#31144"
+msgid "Enter add-on browser"
+msgstr "הפעל דפדפן הרחבות"
+
+msgctxt "#31145"
+msgid "Search add-ons"
+msgstr "חפש הרחבות"
+
+msgctxt "#31148"
+msgid "Categories"
+msgstr "קטגוריות"
+
+msgctxt "#31149"
+msgid "Select genre fanart pack"
+msgstr "בחר חבילת סגנונות פאנארט"
+
+msgctxt "#31150"
+msgid "Repository"
+msgstr "מאגר (Repository)"
+
+msgctxt "#31151"
+msgid "Unwatched music videos"
+msgstr "סרטוני מוזיקה שטרם נצפו"
+
+msgctxt "#31152"
+msgid "Random music videos"
+msgstr "סרטוני מוזיקה אקראיים"
+
+msgctxt "#31153"
+msgid "You do not have any add-ons of this type installed. Enter the add-on browser to download add-ons created by our community."
+msgstr "לא מותקנות הרחבות מהסוג זה. אנא כנס לדפדפן ההרחבות  כדי להוריד הרחבות שנוצרו על ידי הקהילה שלנו."
+
+msgctxt "#31154"
+msgid "Press OK to switch between locations"
+msgstr "לחץ על אישור כדי לעבור בין מיקומים"
+
+msgctxt "#31155"
+msgid "No bookmarks created yet."
+msgstr "עדיין לא נוצרו סימניות."
+
+msgctxt "#31156"
+msgid "Choose background pattern"
+msgstr "בחר תבנית רקע"
+
+msgctxt "#31157"
+msgid "Edit categories"
+msgstr "עריכת קטגוריות"
+
+msgctxt "#31158"
+msgid "Touch mode"
+msgstr "מצב לחיצה"
+
+msgctxt "#31159"
+msgid "Artwork"
+msgstr "גרפיקה"
+
+msgctxt "#31160"
+msgid "Show media flags"
+msgstr "הצג דגלי מידע על הסרט"
+
+msgctxt "#31161"
+msgid "Numeric pad"
+msgstr "לוח ספרות"
+
+msgctxt "#31162"
+msgid "Play your personal games or download one of the many game add-ons from the official repository."
+msgstr "שחק את המשחקים האישיים שלך או הורד אחד מהמשחקים הרבים מהמאגר הרשמי."
+
+msgctxt "#31163"
+msgid "Show Fanart background"
+msgstr "הצג רקע פאנארט"
+
+msgctxt "#31165"
+msgid "Profile name"
+msgstr "שם משתמש"

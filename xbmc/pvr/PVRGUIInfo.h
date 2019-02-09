@@ -1,205 +1,87 @@
-#pragma once
 /*
- *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
+#pragma once
+
+#include <atomic>
+#include <string>
+#include <vector>
+
 #include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-#include "pvr/addons/PVRClients.h"
+#include "guilib/guiinfo/GUIInfoProvider.h"
 #include "threads/CriticalSection.h"
-#include "threads/SystemClock.h"
 #include "threads/Thread.h"
 #include "utils/Observer.h"
 
-#include <atomic>
-#include <memory>
-#include <vector>
+#include "pvr/PVRGUITimerInfo.h"
+#include "pvr/PVRGUITimesInfo.h"
+#include "pvr/PVRTypes.h"
+#include "pvr/addons/PVRClients.h"
 
-namespace EPG
+namespace KODI
 {
-  class CEpgInfoTag;
-  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+namespace GUILIB
+{
+namespace GUIINFO
+{
+  class CGUIInfo;
+}
+}
 }
 
 namespace PVR
 {
-  class CPVRTimerInfoTag;
-  class CPVRRecording;
-
-  class CPVRGUIInfo : private CThread,
-                      private Observer
+  class CPVRGUIInfo : public KODI::GUILIB::GUIINFO::CGUIInfoProvider, private CThread, private Observer
   {
   public:
     CPVRGUIInfo(void);
-    virtual ~CPVRGUIInfo(void);
+    ~CPVRGUIInfo(void) override;
 
     void Start(void);
     void Stop(void);
 
-    void Notify(const Observable &obs, const ObservableMessage msg);
+    void Notify(const Observable &obs, const ObservableMessage msg) override;
 
-    bool TranslateBoolInfo(DWORD dwInfo) const;
-    bool TranslateCharInfo(DWORD dwInfo, std::string &strValue) const;
-    int TranslateIntInfo(DWORD dwInfo) const;
-
-    /*!
-     * @brief Get the total duration of the currently playing LiveTV item.
-     * @return The total duration in milliseconds or NULL if no channel is playing.
-     */
-    int GetDuration(void) const;
-
-    /*!
-     * @brief Get the current position in milliseconds since the start of a LiveTV item.
-     * @return The position in milliseconds or NULL if no channel is playing.
-     */
-    int GetStartTime(void) const;
-
-    /*!
-     * @brief Show the player info.
-     * @param iTimeout Hide the player info after iTimeout seconds.
-     * @todo not really the right place for this :-)
-     */
-    void ShowPlayerInfo(int iTimeout);
-
-    /*!
-     * @brief Clear the playing EPG tag.
-     */
-    void ResetPlayingTag(void);
-
-    /*!
-     * @brief Get the currently playing EPG tag.
-     * @return The currently playing EPG tag or NULL if no EPG tag is playing.
-     */
-    EPG::CEpgInfoTagPtr GetPlayingTag() const;
-
-    /*!
-     * @brief Get playing TV group.
-     * @return The currently playing TV group or NULL if no TV group is playing.
-     */
-    std::string GetPlayingTVGroup();
+    // KODI::GUILIB::GUIINFO::IGUIInfoProvider implementation
+    bool InitCurrentItem(CFileItem *item) override;
+    bool GetLabel(std::string& value, const CFileItem *item, int contextWindow, const KODI::GUILIB::GUIINFO::CGUIInfo &info, std::string *fallback) const override;
+    bool GetInt(int& value, const CGUIListItem *item, int contextWindow, const KODI::GUILIB::GUIINFO::CGUIInfo &info) const override;
+    bool GetBool(bool& value, const CGUIListItem *item, int contextWindow, const KODI::GUILIB::GUIINFO::CGUIInfo &info) const override;
 
   private:
-    class TimerInfo
-    {
-    public:
-      TimerInfo();
-      virtual ~TimerInfo() {}
-
-      void ResetProperties();
-
-      void UpdateTimersCache();
-      void UpdateTimersToggle();
-      void UpdateNextTimer();
-
-      void CharInfoActiveTimerTitle(std::string &strValue) const { strValue = m_strActiveTimerTitle; }
-      void CharInfoActiveTimerChannelName(std::string &strValue) const { strValue = m_strActiveTimerChannelName; }
-      void CharInfoActiveTimerChannelIcon(std::string &strValue) const { strValue = m_strActiveTimerChannelIcon; }
-      void CharInfoActiveTimerDateTime(std::string &strValue) const { strValue = m_strActiveTimerTime; }
-      void CharInfoNextTimerTitle(std::string &strValue) const { strValue = m_strNextRecordingTitle; }
-      void CharInfoNextTimerChannelName(std::string &strValue) const { strValue = m_strNextRecordingChannelName; }
-      void CharInfoNextTimerChannelIcon(std::string &strValue) const { strValue = m_strNextRecordingChannelIcon; }
-      void CharInfoNextTimerDateTime(std::string &strValue) const { strValue = m_strNextRecordingTime; }
-      void CharInfoNextTimer(std::string &strValue) const { strValue = m_strNextTimerInfo; }
-
-      bool HasTimers() const { return m_iTimerAmount > 0; }
-      bool HasRecordingTimers() const { return m_iRecordingTimerAmount > 0; }
-      bool HasNonRecordingTimers() const { return m_iTimerAmount - m_iRecordingTimerAmount > 0; }
-
-    private:
-      bool TimerInfoToggle();
-
-      virtual int AmountActiveTimers() = 0;
-      virtual int AmountActiveRecordings() = 0;
-      virtual std::vector<CFileItemPtr> GetActiveRecordings() = 0;
-      virtual CFileItemPtr GetNextActiveTimer() = 0;
-
-      unsigned int m_iTimerAmount;
-      unsigned int m_iRecordingTimerAmount;
-
-      std::string m_strActiveTimerTitle;
-      std::string m_strActiveTimerChannelName;
-      std::string m_strActiveTimerChannelIcon;
-      std::string m_strActiveTimerTime;
-      std::string m_strNextRecordingTitle;
-      std::string m_strNextRecordingChannelName;
-      std::string m_strNextRecordingChannelIcon;
-      std::string m_strNextRecordingTime;
-      std::string m_strNextTimerInfo;
-
-      unsigned int m_iTimerInfoToggleStart;
-      unsigned int m_iTimerInfoToggleCurrent;
-
-      CCriticalSection m_critSection;
-    };
-
-    class AnyTimerInfo : public TimerInfo
-    {
-    public:
-      AnyTimerInfo() {};
-
-    private:
-      int AmountActiveTimers() override;
-      int AmountActiveRecordings() override;
-      std::vector<CFileItemPtr> GetActiveRecordings() override;
-      CFileItemPtr GetNextActiveTimer() override;
-    };
-
-    class TVTimerInfo : public TimerInfo
-    {
-    public:
-      TVTimerInfo() {};
-
-    private:
-      int AmountActiveTimers() override;
-      int AmountActiveRecordings() override;
-      std::vector<CFileItemPtr> GetActiveRecordings() override;
-      CFileItemPtr GetNextActiveTimer() override;
-    };
-
-    class RadioTimerInfo : public TimerInfo
-    {
-    public:
-      RadioTimerInfo() {};
-
-    private:
-      int AmountActiveTimers() override;
-      int AmountActiveRecordings() override;
-      std::vector<CFileItemPtr> GetActiveRecordings() override;
-      CFileItemPtr GetNextActiveTimer() override;
-    };
-
     void ResetProperties(void);
     void ClearQualityInfo(PVR_SIGNAL_STATUS &qualityInfo);
-    void Process(void);
+    void ClearDescrambleInfo(PVR_DESCRAMBLE_INFO &descrambleInfo);
 
-    void UpdatePlayingTag(void);
+    void Process(void) override;
+
     void UpdateTimersCache(void);
     void UpdateBackendCache(void);
     void UpdateQualityData(void);
+    void UpdateDescrambleData(void);
     void UpdateMisc(void);
     void UpdateNextTimer(void);
-    void UpdateTimeshift(void);
+    void UpdateTimeshiftData(void);
+    void UpdateTimeshiftProgressData();
 
     void UpdateTimersToggle(void);
-    void ToggleShowInfo(void);
 
-    void CharInfoPlayingDuration(std::string &strValue) const;
-    void CharInfoPlayingTime(std::string &strValue) const;
+    bool GetListItemAndPlayerLabel(const CFileItem *item, const KODI::GUILIB::GUIINFO::CGUIInfo &info, std::string &strValue) const;
+    bool GetPVRLabel(const CFileItem *item, const KODI::GUILIB::GUIINFO::CGUIInfo &info, std::string &strValue) const;
+    bool GetRadioRDSLabel(const CFileItem *item, const KODI::GUILIB::GUIINFO::CGUIInfo &info, std::string &strValue) const;
+
+    bool GetListItemAndPlayerInt(const CFileItem *item, const KODI::GUILIB::GUIINFO::CGUIInfo &info, int &iValue) const;
+    bool GetPVRInt(const CFileItem *item, const KODI::GUILIB::GUIINFO::CGUIInfo &info, int& iValue) const;
+
+    bool GetListItemAndPlayerBool(const CFileItem *item, const KODI::GUILIB::GUIINFO::CGUIInfo &info, bool &bValue) const;
+    bool GetPVRBool(const CFileItem *item, const KODI::GUILIB::GUIINFO::CGUIInfo &info, bool& bValue) const;
+    bool GetRadioRDSBool(const CFileItem *item, const KODI::GUILIB::GUIINFO::CGUIInfo &info, bool &bValue) const;
+
     void CharInfoBackendNumber(std::string &strValue) const;
     void CharInfoTotalDiskSpace(std::string &strValue) const;
     void CharInfoSignal(std::string &strValue) const;
@@ -221,15 +103,14 @@ namespace PVR
     void CharInfoService(std::string &strValue) const;
     void CharInfoMux(std::string &strValue) const;
     void CharInfoProvider(std::string &strValue) const;
-    void CharInfoTimeshiftStartTime(std::string &strValue) const;
-    void CharInfoTimeshiftEndTime(std::string &strValue) const;
-    void CharInfoTimeshiftPlayTime(std::string &strValue) const;
 
-    /** @name GUIInfoManager data */
+    /** @name PVRGUIInfo data */
     //@{
-    AnyTimerInfo   m_anyTimersInfo; // tv + radio
-    TVTimerInfo    m_tvTimersInfo;
-    RadioTimerInfo m_radioTimersInfo;
+    CPVRGUIAnyTimerInfo   m_anyTimersInfo; // tv + radio
+    CPVRGUITVTimerInfo    m_tvTimersInfo;
+    CPVRGUIRadioTimerInfo m_radioTimersInfo;
+
+    CPVRGUITimesInfo m_timesInfo;
 
     bool                            m_bHasTVRecordings;
     bool                            m_bHasRadioRecordings;
@@ -244,30 +125,25 @@ namespace PVR
     std::string                     m_strBackendChannels;
     long long                       m_iBackendDiskTotal;
     long long                       m_iBackendDiskUsed;
-    unsigned int                    m_iDuration;
     bool                            m_bIsPlayingTV;
     bool                            m_bIsPlayingRadio;
     bool                            m_bIsPlayingRecording;
+    bool                            m_bIsPlayingEpgTag;
     bool                            m_bIsPlayingEncryptedStream;
     bool                            m_bHasTVChannels;
     bool                            m_bHasRadioChannels;
+    bool                            m_bCanRecordPlayingChannel;
+    bool                            m_bIsRecordingPlayingChannel;
     std::string                     m_strPlayingTVGroup;
+    std::string                     m_strPlayingRadioGroup;
+
     //@}
 
     PVR_SIGNAL_STATUS               m_qualityInfo;       /*!< stream quality information */
-    XbmcThreads::EndTime            m_ToggleShowInfo;
-    EPG::CEpgInfoTagPtr             m_playingEpgTag;
+    PVR_DESCRAMBLE_INFO             m_descrambleInfo;    /*!< stream descramble information */
     std::vector<SBackend>           m_backendProperties;
 
-    bool                            m_bIsTimeshifting;
-    time_t                          m_iTimeshiftStartTime;
-    time_t                          m_iTimeshiftEndTime;
-    time_t                          m_iTimeshiftPlayTime;
-    std::string                     m_strTimeshiftStartTime;
-    std::string                     m_strTimeshiftEndTime;
-    std::string                     m_strTimeshiftPlayTime;
-
-    CCriticalSection                m_critSection;
+    mutable CCriticalSection m_critSection;
 
     /**
      * The various backend-related fields will only be updated when this
@@ -275,6 +151,8 @@ namespace PVR
      * backend querying when we're not displaying any of the queried
      * information.
      */
-    mutable std::atomic<bool>       m_updateBackendCacheRequested;
+    mutable std::atomic<bool> m_updateBackendCacheRequested;
+
+    bool m_bRegistered;
   };
 }

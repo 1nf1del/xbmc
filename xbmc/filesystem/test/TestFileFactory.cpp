@@ -1,27 +1,16 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
+#include "ServiceBroker.h"
 #include "filesystem/File.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
-#include "utils/StringUtils.h"
+#include "settings/SettingsComponent.h"
 #include "test/TestUtils.h"
 #include "utils/StringUtils.h"
 
@@ -32,29 +21,25 @@ class TestFileFactory : public testing::Test
 protected:
   TestFileFactory()
   {
-    if (CSettings::GetInstance().Initialize())
-    {
-      std::vector<std::string> advancedsettings =
-        CXBMCTestUtils::Instance().getAdvancedSettingsFiles();
-      std::vector<std::string> guisettings =
-        CXBMCTestUtils::Instance().getGUISettingsFiles();
+    std::vector<std::string> advancedsettings =
+      CXBMCTestUtils::Instance().getAdvancedSettingsFiles();
+    std::vector<std::string> guisettings =
+      CXBMCTestUtils::Instance().getGUISettingsFiles();
 
-      std::vector<std::string>::iterator it;
-      for (it = guisettings.begin(); it < guisettings.end(); ++it)
-        CSettings::GetInstance().Load(*it);
+    const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+    for (const auto& it : guisettings)
+      settings->Load(it);
 
-      for (it = advancedsettings.begin(); it < advancedsettings.end(); ++it)
-        g_advancedSettings.ParseSettingsFile(*it);
+    const std::shared_ptr<CAdvancedSettings> advancedSettings = CServiceBroker::GetSettingsComponent()->GetAdvancedSettings();
+    for (const auto& it : advancedsettings)
+      advancedSettings->ParseSettingsFile(it);
 
-      CSettings::GetInstance().SetLoaded();
-    }
+    settings->SetLoaded();
   }
 
-  ~TestFileFactory()
+  ~TestFileFactory() override
   {
-    g_advancedSettings.Clear();
-    CSettings::GetInstance().Unload();
-    CSettings::GetInstance().Uninitialize();
+    CServiceBroker::GetSettingsComponent()->GetSettings()->Unload();
   }
 };
 
@@ -74,11 +59,10 @@ TEST_F(TestFileFactory, Read)
   std::vector<std::string> urls =
     CXBMCTestUtils::Instance().getTestFileFactoryReadUrls();
 
-  std::vector<std::string>::iterator it;
-  for (it = urls.begin(); it < urls.end(); ++it)
+  for (const auto& url : urls)
   {
-    std::cout << "Testing URL: " << *it << std::endl;
-    ASSERT_TRUE(file.Open(*it));
+    std::cout << "Testing URL: " << url << std::endl;
+    ASSERT_TRUE(file.Open(url));
     std::cout << "file.GetLength(): " <<
       testing::PrintToString(file.GetLength()) << std::endl;
     std::cout << "file.Seek(file.GetLength() / 2, SEEK_CUR) return value: " <<
@@ -128,12 +112,11 @@ TEST_F(TestFileFactory, Write)
   std::vector<std::string> urls =
     CXBMCTestUtils::Instance().getTestFileFactoryWriteUrls();
 
-  std::vector<std::string>::iterator it;
-  for (it = urls.begin(); it < urls.end(); ++it)
+  for (const auto& url : urls)
   {
-    std::cout << "Testing URL: " << *it << std::endl;
+    std::cout << "Testing URL: " << url << std::endl;
     std::cout << "Writing...";
-    ASSERT_TRUE(file.OpenForWrite(*it, true));
+    ASSERT_TRUE(file.OpenForWrite(url, true));
     while ((size = inputfile.Read(buf, sizeof(buf))) > 0)
     {
       EXPECT_GE(file.Write(buf, size), 0);
@@ -141,7 +124,7 @@ TEST_F(TestFileFactory, Write)
     file.Close();
     std::cout << "done." << std::endl;
     std::cout << "Reading..." << std::endl;
-    ASSERT_TRUE(file.Open(*it));
+    ASSERT_TRUE(file.Open(url));
     EXPECT_EQ(inputfile.GetLength(), file.GetLength());
     std::cout << "file.Seek(file.GetLength() / 2, SEEK_CUR) return value: " <<
       testing::PrintToString(file.Seek(file.GetLength() / 2, SEEK_CUR)) << std::endl;

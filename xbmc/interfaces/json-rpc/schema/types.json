@@ -111,7 +111,8 @@
                   "bitrate", "random" ]
       },
       "order": { "type": "string", "default": "ascending", "enum": [ "ascending", "descending" ] },
-      "ignorearticle": { "type": "boolean", "default": false }
+      "ignorearticle": { "type": "boolean", "default": false },
+      "useartistsortname": { "type": "boolean", "default": false }	  
     }
   },
   "Library.Id": {
@@ -416,16 +417,29 @@
     "type": "object",
     "additionalProperties": { "type": [ "null", { "$ref": "Global.String.NotEmpty", "required": true } ] }
   },
+  "Library.Fields.Source": {
+    "extends": "Item.Fields.Base",
+    "items": { "type": "string", "enum": [ "file", "paths" ] }
+  },
+  "Library.Details.Source": {
+    "extends": "Item.Details.Base",
+    "properties": {
+      "sourceid": { "$ref": "Library.Id", "required": true },
+      "file": { "type": "string", "description": "The url encoded multipath string combining all paths of the source ", "required": true },
+      "paths": { "$ref": "Array.String", "description": "The individual paths of the media source" }
+    }
+  },
   "Library.Fields.Genre": {
     "extends": "Item.Fields.Base",
-    "items": { "type": "string", "enum": [ "title", "thumbnail" ] }
+    "items": { "type": "string", "enum": [ "title", "thumbnail", "sourceid" ] }
   },
   "Library.Details.Genre": {
     "extends": "Item.Details.Base",
     "properties": {
       "genreid": { "$ref": "Library.Id", "required": true },
       "title": { "type": "string" },
-      "thumbnail": { "type": "string" }
+      "thumbnail": { "type": "string" },
+      "sourceid": { "$ref": "Array.Integer", "description": "The ids of sources with songs of the genre" } 
     }
   },
   "Library.Fields.Tag": {
@@ -453,40 +467,43 @@
   "Audio.Fields.Artist": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "description": "Requesting the (song)genreid/genre, or roleid/role fields will result in increased response times",
+      "description": "Requesting the (song)genreid/genre, roleid/role or sourceid fields will result in increased response times",
       "enum": [ "instrument", "style", "mood", "born", "formed",
                 "description", "genre", "died", "disbanded",
                 "yearsactive", "musicbrainzartistid", "fanart",
                 "thumbnail", "compilationartist", "dateadded",
-                "roles", "songgenres", "isalbumartist"]
+                "roles", "songgenres", "isalbumartist",
+                "sortname", "type", "gender", "disambiguation", "art", "sourceid"]
     }
   },
   "Audio.Fields.Album": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "description": "Requesting the genreid and/or artistid field will result in increased response times",
+      "description": "Requesting the songgenres, artistid and/or sourceid fields will result in increased response times",
       "enum": [ "title", "description", "artist", "genre",
                 "theme", "mood", "style", "type", "albumlabel",
                 "rating", "votes", "userrating","year", "musicbrainzalbumid",
                 "musicbrainzalbumartistid", "fanart", "thumbnail",
-                "playcount", "genreid", "artistid", "displayartist",
-                "compilation", "releasetype", "dateadded" ]
+                "playcount", "artistid", "displayartist",
+                "compilation", "releasetype", "dateadded",
+                "sortartist", "musicbrainzreleasegroupid", "songgenres", "art",
+                "lastplayed", "sourceid"]
     }
   },
   "Audio.Fields.Song": {
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
-      "description": "Requesting the genreid, artistid and/or albumartistid field will result in increased response times",
+      "description": "Requesting the genreid, artistid, albumartistid and/or sourceid fields will result in increased response times",
       "enum": [ "title", "artist", "albumartist", "genre", "year",
-                "rating", "album", "track", "duration", "comment", 
+                "rating", "album", "track", "duration", "comment",
                 "lyrics", "musicbrainztrackid", "musicbrainzartistid",
                 "musicbrainzalbumid", "musicbrainzalbumartistid",
                 "playcount", "fanart", "thumbnail", "file", "albumid",
                 "lastplayed", "disc", "genreid", "artistid", "displayartist",
-                "albumartistid", "albumreleasetype", "dateadded", 
+                "albumartistid", "albumreleasetype", "dateadded",
                 "votes", "userrating", "mood", "contributors",
-                "displaycomposer", "displayconductor", "displayorchestra", "displaylyricist"
-				 ]
+                "displaycomposer", "displayconductor", "displayorchestra", "displaylyricist",
+                "sortartist", "art", "sourceid"]
     }
   },
   "Audio.Album.ReleaseType": {
@@ -531,7 +548,8 @@
     "extends": "Media.Details.Base",
     "properties": {
       "genre": { "$ref": "Array.String" },
-      "dateadded": { "type": "string" }
+      "dateadded": { "type": "string" },
+      "art": { "$ref": "Media.Artwork" }
     }
   },
   "Audio.Details.Media": {
@@ -541,13 +559,12 @@
       "artist": { "$ref": "Array.String" },
       "year": { "type": "integer" },
       "rating": { "type": "number" },
-      "musicbrainzalbumid": { "type": "string" },
-      "musicbrainzalbumartistid": { "type": "string" },
-      "genreid": { "$ref": "Array.Integer" },
+      "musicbrainzalbumartistid": { "$ref": "Array.String" },
       "artistid": { "$ref": "Array.Integer" },
       "displayartist": { "type" : "string" },
       "votes": { "type": "integer" },
-      "userrating": { "type": "integer" }
+      "userrating": { "type": "integer" },
+      "sortartist": { "type" : "string" }
     }
   },
   "Audio.Details.Artist": {
@@ -565,10 +582,15 @@
       "disbanded": { "type": "string" },
       "yearsactive": { "$ref": "Array.String" },
       "compilationartist": { "type": "boolean" },
-      "musicbrainzartistid": { "type": "string" },
+      "musicbrainzartistid": { "$ref": "Array.String" },
       "roles": {"$ref": "Audio.Artist.Roles"},
       "songgenres": {"$ref": "Audio.Details.Genres"},
-      "isalbumartist": { "type": "boolean" }
+      "isalbumartist": { "type": "boolean" },
+      "sortname": { "type": "string" },
+      "type": { "type": "string" },
+      "gender": { "type": "string" },
+      "disambiguation": { "type": "string" },
+      "sourceid": { "$ref": "Array.Integer" }
     }
   },
   "Audio.Details.Album": {
@@ -583,7 +605,12 @@
       "albumlabel": { "type": "string" },
       "playcount": { "type": "integer" },
       "compilation": { "type": "boolean" },
-      "releasetype": { "$ref": "Audio.Album.ReleaseType" }
+      "releasetype": { "$ref": "Audio.Album.ReleaseType" },
+      "musicbrainzreleasegroupid": { "type": "string" },
+      "musicbrainzalbumid": { "type": "string" },
+      "songgenres": {"$ref": "Audio.Details.Genres"},
+      "lastplayed": { "type": "string" },
+      "sourceid": { "$ref": "Array.Integer" } 
     }
   },
   "Audio.Details.Song": {
@@ -599,7 +626,7 @@
       "lyrics": { "type": "string" },
       "playcount": { "type": "integer" },
       "musicbrainztrackid": { "type": "string" },
-      "musicbrainzartistid": { "type": "string" },
+      "musicbrainzartistid": { "$ref": "Array.String" },
       "albumid": { "$ref": "Library.Id" },
       "lastplayed": { "type": "string" },
       "disc": { "type": "integer" },
@@ -610,17 +637,20 @@
       "displaycomposer": { "type": "string"},
       "displayconductor": { "type": "string"},
       "displayorchestra": { "type": "string"},
-      "displaylyricist": { "type": "string"}
+      "displaylyricist": { "type": "string"},
+      "genreid": { "$ref": "Array.Integer"},
+      "sourceid": { "$ref": "Array.Integer" }
     }
   },
   "Audio.Property.Name": {
     "type": "string",
-    "enum": [ "missingartistid" ]
+    "enum": [ "missingartistid", "librarylastupdated" ]
   },
   "Audio.Property.Value": {
     "type": "object",
     "properties": {
-      "missingartistid": { "$ref": "Library.Id" }
+      "missingartistid": { "$ref": "Library.Id" },
+      "librarylastupdated": { "type": "string" }
     }
   },
   "Video.Fields.Movie": {
@@ -632,7 +662,7 @@
                 "playcount", "writer", "studio", "mpaa", "cast", "country",
                 "imdbnumber", "runtime", "set", "showlink", "streamdetails",
                 "top250", "votes", "fanart", "thumbnail", "file", "sorttitle",
-                "resume", "setid", "dateadded", "tag", "art", "userrating",  
+                "resume", "setid", "dateadded", "tag", "art", "userrating",
                 "ratings", "premiered", "uniqueid" ]
     }
   },
@@ -651,7 +681,7 @@
                 "imdbnumber", "premiered", "votes", "lastplayed",
                 "fanart", "thumbnail", "file", "originaltitle",
                 "sorttitle", "episodeguide", "season", "watchedepisodes",
-                "dateadded", "tag", "art", "userrating", "ratings", 
+                "dateadded", "tag", "art", "userrating", "ratings",
                 "runtime", "uniqueid" ]
     }
   },
@@ -659,7 +689,7 @@
     "extends": "Item.Fields.Base",
     "items": { "type": "string",
       "enum": [ "season", "showtitle", "playcount", "episode", "fanart", "thumbnail", "tvshowid",
-                "watchedepisodes", "art", "userrating" ]
+                "watchedepisodes", "art", "userrating", "title" ]
     }
   },
   "Video.Fields.Episode": {
@@ -854,7 +884,8 @@
       "episode": { "type": "integer" },
       "watchedepisodes": { "type": "integer" },
       "tvshowid": { "$ref": "Library.Id" },
-      "userrating": { "type": "integer" }
+      "userrating": { "type": "integer" },
+      "title": { "type": "string" }
     }
   },
   "Video.Details.Episode": {
@@ -1377,7 +1408,7 @@
       "comment": { "type": "string" },
       "lyrics": { "type": "string" },
       "musicbrainztrackid": { "type": "string" },
-      "musicbrainzartistid": { "type": "string" },
+      "musicbrainzartistid": { "$ref": "Array.String" },
       "trailer": { "type": "string" },
       "tagline": { "type": "string" },
       "plotoutline": { "type": "string" },
@@ -1443,7 +1474,7 @@
                 "locked", "channelnumber", "starttime", "endtime", "specialsortseason",
                 "specialsortepisode", "compilation", "releasetype", "albumreleasetype",
                 "contributors", "displaycomposer", "displayconductor", "displayorchestra", "displaylyricist",
-                "userrating" ]
+                "userrating", "votes", "sortartist", "musicbrainzreleasegroupid"]
     }
   },
   "List.Item.All": {
@@ -1473,7 +1504,7 @@
                 "disc", "tag", "art", "genreid", "displayartist", "albumartistid",
                 "description", "theme", "mood", "style", "albumlabel", "sorttitle",
                 "episodeguide", "uniqueid", "dateadded", "size", "lastmodified", "mimetype",
-                "specialsortseason", "specialsortepisode" ]
+                "specialsortseason", "specialsortepisode", "sortartist", "musicbrainzreleasegroupid"]
     }
   },
   "List.Item.File": {
@@ -1594,7 +1625,7 @@
   },
   "Application.Property.Name": {
     "type": "string",
-    "enum": [ "volume", "muted", "name", "version" ]
+    "enum": [ "volume", "muted", "name", "version", "volume", "sorttokens", "language" ]
   },
   "Application.Property.Value": {
     "type": "object",
@@ -1610,7 +1641,9 @@
           "tag": { "type": "string", "enum": [ "prealpha", "alpha", "beta", "releasecandidate", "stable" ], "required": true },
           "tagversion": { "type": "string" }
         }
-      }
+      },
+      "sorttokens": { "$ref": "Array.String", "description": "Articles ignored during sorting when ignorearticle is enabled." },
+      "language": { "type": "string", "minLength": 1, "description": "Current language code and region e.g. en_GB" }
     }
   },
   "Favourite.Fields.Favourite": {
@@ -1639,7 +1672,7 @@
     "type": "string",
     "enum": [
       "boolean", "integer", "number", "string", "action", "list",
-      "path", "addon"
+      "path", "addon", "date", "time"
     ]
   },
   "Setting.Level": {
@@ -1733,6 +1766,13 @@
       "formatvalue": { "type": "string", "required": true }
     }
   },
+  "Setting.Details.ControlLabel": {
+    "extends": "Setting.Details.ControlBase",
+    "properties": {
+      "type": { "type": "string", "required": true, "enum": [ "label" ] },
+      "format": { "type": "string", "required": true, "enum": [ "string" ] }
+    }
+  },
   "Setting.Details.Control": {
     "type": [
       { "$ref": "Setting.Details.ControlCheckmark", "required": true },
@@ -1741,7 +1781,8 @@
       { "$ref": "Setting.Details.ControlButton", "required": true },
       { "$ref": "Setting.Details.ControlList", "required": true },
       { "$ref": "Setting.Details.ControlSlider", "required": true },
-      { "$ref": "Setting.Details.ControlRange", "required": true }
+      { "$ref": "Setting.Details.ControlRange", "required": true },
+      { "$ref": "Setting.Details.ControlLabel", "required": true }
     ]
   },
   "Setting.Details.Base": {
@@ -1819,6 +1860,9 @@
   },
   "Setting.Details.SettingAction": {
     "extends": "Setting.Details.SettingBase",
+    "properties": {
+      "data": { "type": "string", "required": true }
+    },
     "additionalProperties": false
   },
   "Setting.Details.SettingList": {
@@ -1849,6 +1893,14 @@
     },
     "additionalProperties": false
   },
+  "Setting.Details.SettingDate": {
+    "extends": "Setting.Details.SettingString",
+    "additionalProperties": false
+  },
+  "Setting.Details.SettingTime": {
+    "extends": "Setting.Details.SettingString",
+    "additionalProperties": false
+  },
   "Setting.Details.Setting": {
     "type": [
       { "$ref": "Setting.Details.SettingBool", "required": true },
@@ -1858,7 +1910,9 @@
       { "$ref": "Setting.Details.SettingAction", "required": true },
       { "$ref": "Setting.Details.SettingList", "required": true },
       { "$ref": "Setting.Details.SettingPath", "required": true },
-      { "$ref": "Setting.Details.SettingAddon", "required": true }
+      { "$ref": "Setting.Details.SettingAddon", "required": true },
+      { "$ref": "Setting.Details.SettingDate", "required": true },
+      { "$ref": "Setting.Details.SettingTime", "required": true }
     ]
   },
   "Setting.Details.Group": {

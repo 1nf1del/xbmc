@@ -2,11 +2,11 @@ include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
 
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile
 
 # lib name, version
 LIBNAME=swig
-VERSION=3.0.10
+VERSION=3.0.12
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
@@ -14,8 +14,6 @@ ARCHIVE=$(SOURCE).tar.gz
 CONFIGURE=./configure --prefix=$(PREFIX) --without-alllang --without-x --disable-ccache
 
 LIBDYLIB=$(PLATFORM)/swig
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

@@ -1,24 +1,12 @@
 /*
- *      Copyright (C) 2005-2014 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#include "cores/AudioEngine/AEFactory.h"
+#include "cores/AudioEngine/AESinkFactory.h"
 #include "cores/AudioEngine/Sinks/AESinkDARWINOSX.h"
 #include "cores/AudioEngine/Utils/AERingBuffer.h"
 #include "cores/AudioEngine/Sinks/osx/CoreAudioHelpers.h"
@@ -27,12 +15,15 @@
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/TimeUtils.h"
-#include "linux/XMemUtils.h"
+#include "platform/linux/XMemUtils.h"
+#include "ServiceBroker.h"
+
 
 static void EnumerateDevices(CADeviceList &list)
 {
   std::string defaultDeviceName;
   CCoreAudioHardware::GetOutputDeviceName(defaultDeviceName);
+  AudioDeviceID defaultID = CCoreAudioHardware::GetDefaultOutputDevice();
 
   CoreAudioDeviceList deviceIDList;
   CCoreAudioHardware::GetOutputDevices(&deviceIDList);
@@ -51,8 +42,8 @@ static void EnumerateDevices(CADeviceList &list)
     //(allows transition from headphones to speaker and stuff
     //like that)
     //fixme taking the first stream device is wrong here
-    //we rather might need the concatination of all streams *sucks*
-    if(defaultDeviceName == devEnum.GetMasterDeviceName())
+    //we rather might need the concatenation of all streams *sucks*
+    if(defaultID == deviceID && defaultDeviceName == devEnum.GetMasterDeviceName())
     {
       struct CADeviceInstance deviceInstance;
       deviceInstance.audioDeviceId = deviceID;
@@ -127,7 +118,9 @@ OSStatus deviceChangedCB(AudioObjectID                       inObjectID,
   if  (deviceChanged)
   {
     CLog::Log(LOGDEBUG, "CoreAudio: audiodevicelist changed - reenumerating");
-    CAEFactory::DeviceChange();
+    IAE* ae = CServiceBroker::GetActiveAE();
+    if (ae)
+      ae->DeviceChange();
     CLog::Log(LOGDEBUG, "CoreAudio: audiodevicelist changed - done");
   }
   return noErr;
@@ -137,6 +130,7 @@ OSStatus deviceChangedCB(AudioObjectID                       inObjectID,
 CAESinkDARWINOSX::CAESinkDARWINOSX()
 : m_latentFrames(0),
   m_outputBufferIndex(0),
+  m_outputBitstream(false),
   m_planes(1),
   m_frameSizePerPlane(0),
   m_framesPerSecond(0),
@@ -147,7 +141,7 @@ CAESinkDARWINOSX::CAESinkDARWINOSX()
 {
   // By default, kAudioHardwarePropertyRunLoop points at the process's main thread on SnowLeopard,
   // If your process lacks such a run loop, you can set kAudioHardwarePropertyRunLoop to NULL which
-  // tells the HAL to run it's own thread for notifications (which was the default prior to SnowLeopard).
+  // tells the HAL to run its own thread for notifications (which was the default prior to SnowLeopard).
   // So tell the HAL to use its own thread for similar behavior under all supported versions of OSX.
   CFRunLoopRef theRunLoop = NULL;
   AudioObjectPropertyAddress theAddress = {
@@ -169,6 +163,25 @@ CAESinkDARWINOSX::~CAESinkDARWINOSX()
 {
   CCoreAudioDevice::RegisterDeviceChangedCB(false, deviceChangedCB, this);
   CCoreAudioDevice::RegisterDefaultOutputDeviceChangedCB(false, deviceChangedCB, this);
+}
+
+void CAESinkDARWINOSX::Register()
+{
+  AE::AESinkRegEntry reg;
+  reg.sinkName = "DARWINOSX";
+  reg.createFunc = CAESinkDARWINOSX::Create;
+  reg.enumerateFunc = CAESinkDARWINOSX::EnumerateDevicesEx;
+  AE::CAESinkFactory::RegisterSink(reg);
+}
+
+IAESink* CAESinkDARWINOSX::Create(std::string &device, AEAudioFormat &desiredFormat)
+{
+  IAESink *sink = new CAESinkDARWINOSX();
+  if (sink->Initialize(desiredFormat, device))
+    return sink;
+
+  delete sink;
+  return nullptr;
 }
 
 bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
@@ -251,15 +264,25 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
     }
     else
     {
-      CLog::Log(LOGERROR, "%s, Unable to find suitable stream", __FUNCTION__);
-      return false;
+      CLog::Log(LOGERROR, "%s, Unable to find suitable virtual stream", __FUNCTION__);
+      //return false;
+      numOutputChannelsVirt = 0;
     }
   }
 
   /* Update our AE format */
   format.m_sampleRate    = outputFormat.mSampleRate;
-  
+
   m_outputBufferIndex = requestedStreamIndex;
+
+  // if we are in passthrough but didn't have a matching
+  // virtual format - enable bitstream which deals with
+  // backconverting from float to 16bit
+  if (passthrough && numOutputChannelsVirt == 0)
+  {
+    m_outputBitstream = true;
+    CLog::Log(LOGDEBUG, "%s: Bitstream passthrough with float -> int16 conversion enabled", __FUNCTION__);
+  }
 
   std::string formatString;
   CLog::Log(LOGDEBUG, "%s: Selected stream[%u] - id: 0x%04X, Physical Format: %s %s", __FUNCTION__, (unsigned int)m_outputBufferIndex, (unsigned int)outputStream, StreamDescriptionToString(outputFormat, formatString), passthrough ? "passthrough" : "");
@@ -277,7 +300,7 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
   CLog::Log(LOGDEBUG, "%s: Previous Physical Format: %s", __FUNCTION__, StreamDescriptionToString(previousPhysicalFormat, formatString));
 
   m_outputStream.SetPhysicalFormat(&outputFormat); // Set the active format (the old one will be reverted when we close)
-  if (passthrough)
+  if (passthrough && numOutputChannelsVirt > 0)
     m_outputStream.SetVirtualFormat(&outputFormatVirt);
 
   m_outputStream.GetVirtualFormat(&virtualFormat);
@@ -292,7 +315,7 @@ bool CAESinkDARWINOSX::Initialize(AEAudioFormat &format, std::string &device)
 
   // update the channel map based on the new stream format
   devEnum.GetAEChannelMap(format.m_channelLayout, numOutputChannels);
-   
+
   //! @todo Should we use the virtual format to determine our data format?
   format.m_frameSize     = format.m_channelLayout.Count() * (CAEUtil::DataFormatToBits(format.m_dataFormat) >> 3);
   format.m_frames        = m_device.GetBufferSize();
@@ -351,6 +374,7 @@ void CAESinkDARWINOSX::Deinitialize()
     m_buffer = NULL;
   }
   m_outputBufferIndex = 0;
+  m_outputBitstream = false;
   m_planes = 1;
 
   m_started = false;
@@ -396,14 +420,14 @@ unsigned int CAESinkDARWINOSX::AddPackets(uint8_t **data, unsigned int frames, u
     if (!m_started)
       timeout = 4500;
 
-    // we are using a timer here for beeing sure for timeouts
+    // we are using a timer here for being sure for timeouts
     // condvar can be woken spuriously as signaled
     XbmcThreads::EndTime timer(timeout);
     condVar.wait(mutex, timeout);
     if (!m_started && timer.IsTimePast())
     {
       CLog::Log(LOGERROR, "%s engine didn't start in %d ms!", __FUNCTION__, timeout);
-      return INT_MAX;    
+      return INT_MAX;
     }
   }
 
@@ -430,7 +454,7 @@ void CAESinkDARWINOSX::Drain()
 
     bytes = m_buffer->GetReadSize();
     // if we timeout and don't
-    // consum bytes - decrease maxNumTimeouts
+    // consume bytes - decrease maxNumTimeouts
     if (timer.IsTimePast() && bytes == totalBytes)
       maxNumTimeouts--;
     totalBytes = bytes;
@@ -454,7 +478,7 @@ inline void LogLevel(unsigned int got, unsigned int wanted)
     {
       CLog::Log(LOGWARNING, "DARWINOSX: %sflow (%u vs %u bytes)", got > wanted ? "over" : "under", got, wanted);
       lastReported = got;
-    }    
+    }
   }
   else
     lastReported = INT_MAX; // indicate we were good at least once
@@ -472,17 +496,44 @@ OSStatus CAESinkDARWINOSX::renderCallback(AudioDeviceID inDevice, const AudioTim
     unsigned int startIdx = sink->m_buffer->NumPlanes() == 1 ? sink->m_outputBufferIndex : 0;
     unsigned int endIdx = startIdx + sink->m_buffer->NumPlanes();
 
-    /* buffers appear to come from CA already zero'd, so just copy what is wanted */
-    unsigned int wanted = outOutputData->mBuffers[0].mDataByteSize;
-    unsigned int bytes = std::min(sink->m_buffer->GetReadSize(), wanted);
-    for (unsigned int i = startIdx; i < endIdx; i++)
+    /* NOTE: We assume that the buffers are all the same size... */
+    if (sink->m_outputBitstream)
     {
-      if (i < outOutputData->mNumberBuffers && outOutputData->mBuffers[i].mData)
-        sink->m_buffer->Read((unsigned char *)outOutputData->mBuffers[i].mData, bytes, i);
-      else
-        sink->m_buffer->Read(NULL, bytes, i);
+      /* HACK for bitstreaming AC3/DTS via PCM.
+       We reverse the float->S16LE conversion done in the stream or device */
+      static const float mul = 1.0f / (INT16_MAX + 1);
+
+      size_t wanted = outOutputData->mBuffers[0].mDataByteSize / sizeof(float) * sizeof(int16_t);
+      size_t bytes = std::min((size_t)sink->m_buffer->GetReadSize(), wanted);
+      for (unsigned int j = 0; j < bytes / sizeof(int16_t); j++)
+      {
+        for (unsigned int i = startIdx; i < endIdx; i++)
+        {
+          int16_t src;
+          sink->m_buffer->Read((unsigned char *)&src, sizeof(int16_t), i);
+          if (i < outOutputData->mNumberBuffers && outOutputData->mBuffers[i].mData)
+          {
+            float *dest = (float *)outOutputData->mBuffers[i].mData;
+            dest[j] = src * mul;
+          }
+        }
+      }
+      LogLevel(bytes, wanted);
     }
-    LogLevel(bytes, wanted);
+    else
+    {
+      /* buffers appear to come from CA already zero'd, so just copy what is wanted */
+      unsigned int wanted = outOutputData->mBuffers[0].mDataByteSize;
+      unsigned int bytes = std::min(sink->m_buffer->GetReadSize(), wanted);
+      for (unsigned int i = startIdx; i < endIdx; i++)
+      {
+        if (i < outOutputData->mNumberBuffers && outOutputData->mBuffers[i].mData)
+          sink->m_buffer->Read((unsigned char *)outOutputData->mBuffers[i].mData, bytes, i);
+        else
+          sink->m_buffer->Read(NULL, bytes, i);
+      }
+      LogLevel(bytes, wanted);
+    }
 
     // tell the sink we're good for more data
     condVar.notifyAll();

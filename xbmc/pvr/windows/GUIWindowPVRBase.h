@@ -1,26 +1,19 @@
-#pragma once
 /*
- *      Copyright (C) 2012-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#include "windows/GUIMediaWindow.h"
+#pragma once
+
+#include <memory>
+
 #include "utils/Observer.h"
+#include "windows/GUIMediaWindow.h"
+
+#include "pvr/PVRTypes.h"
 
 #define CONTROL_BTNVIEWASICONS            2
 #define CONTROL_BTNSORTBY                 3
@@ -29,6 +22,9 @@
 #define CONTROL_BTNSHOWHIDDEN             6
 #define CONTROL_BTNSHOWDELETED            7
 #define CONTROL_BTNHIDEDISABLEDTIMERS     8
+#define CONTROL_BTNSHOWMODE               10
+#define CONTROL_LSTCHANNELGROUPS          11
+
 #define CONTROL_BTNCHANNELGROUPS          28
 #define CONTROL_BTNFILTERCHANNELS         31
 
@@ -39,14 +35,6 @@ class CGUIDialogProgressBarHandle;
 
 namespace PVR
 {
-  enum EpgGuideView
-  {
-    GUIDE_VIEW_TIMELINE = 10,
-    GUIDE_VIEW_NOW      = 11,
-    GUIDE_VIEW_NEXT     = 12,
-    GUIDE_VIEW_CHANNEL  = 13
-  };
-
   enum EPGSelectAction
   {
     EPG_SELECT_ACTION_CONTEXT_MENU   = 0,
@@ -54,46 +42,32 @@ namespace PVR
     EPG_SELECT_ACTION_INFO           = 2,
     EPG_SELECT_ACTION_RECORD         = 3,
     EPG_SELECT_ACTION_PLAY_RECORDING = 4,
+    EPG_SELECT_ACTION_SMART_SELECT   = 5
   };
 
-  class CPVRChannelGroup;
-  typedef std::shared_ptr<CPVRChannelGroup> CPVRChannelGroupPtr;
-
-  class CPVRTimerInfoTag;
-  typedef std::shared_ptr<CPVRTimerInfoTag> CPVRTimerInfoTagPtr;
+  class CGUIPVRChannelGroupsSelector;
 
   class CGUIWindowPVRBase : public CGUIMediaWindow, public Observer
   {
   public:
-    virtual ~CGUIWindowPVRBase(void);
-    virtual void OnInitWindow(void) override;
-    virtual void OnDeinitWindow(int nextWindowID) override;
-    virtual bool OnMessage(CGUIMessage& message) override;
-    virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
-    virtual bool OnContextButton(const CFileItem &item, CONTEXT_BUTTON button) { return false; };
-    virtual bool OnContextButtonActiveAEDSPSettings(CFileItem *item, CONTEXT_BUTTON button);
-    virtual bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
-    virtual void UpdateButtons(void) override;
-    virtual bool OnAction(const CAction &action) override;
-    virtual bool OnBack(int actionID) override;
-    virtual bool OpenChannelGroupSelectionDialog(void);
-    virtual void Notify(const Observable &obs, const ObservableMessage msg) override;
-    virtual void SetInvalid() override;
-    virtual bool CanBeActivated() const override;
+    ~CGUIWindowPVRBase(void) override;
 
-    static std::string GetSelectedItemPath(bool bRadio);
-    static void SetSelectedItemPath(bool bRadio, const std::string &path);
+    void OnInitWindow(void) override;
+    void OnDeinitWindow(int nextWindowID) override;
+    bool OnMessage(CGUIMessage& message) override;
+    bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
+    void UpdateButtons(void) override;
+    bool OnAction(const CAction &action) override;
+    bool OnBack(int actionID) override;
+    void Notify(const Observable &obs, const ObservableMessage msg) override;
+    void SetInvalid() override;
+    bool CanBeActivated() const override;
 
-    static bool ShowTimerSettings(const CPVRTimerInfoTagPtr &timer);
-    static bool AddTimer(CFileItem *item, bool bShowTimerSettings = false);
-    static bool AddTimerRule(CFileItem *item, bool bShowTimerSettings = true);
-    static bool EditTimer(CFileItem *item);
-    static bool EditTimerRule(CFileItem *item);
-    static bool DeleteTimer(CFileItem *item);
-    static bool DeleteTimerRule(CFileItem *item);
-    static bool StopRecordFile(CFileItem *item);
-
-    static bool PlayRecording(CFileItem *item, bool bPlayMinimized = false, bool bCheckResume = true);
+    /*!
+     * @brief Refresh window content.
+     * @return true, if refresh succeeded, false otherwise.
+     */
+    bool DoRefresh(void) { return Refresh(true); }
 
   protected:
     CGUIWindowPVRBase(bool bRadio, int id, const std::string &xmlFile);
@@ -102,55 +76,35 @@ namespace PVR
 
     virtual void ClearData();
 
+    /*!
+     * @brief Init this window's channel group with the currently active (the "playing") channel group.
+     * @return true if group could be set, false otherwise.
+     */
     bool InitChannelGroup(void);
-    virtual CPVRChannelGroupPtr GetChannelGroup(void);
-    virtual void SetChannelGroup(const CPVRChannelGroupPtr &group);
 
-    virtual bool ActionShowTimerRule(CFileItem *item);
-    virtual bool ActionToggleTimer(CFileItem *item);
-    virtual bool ActionPlayChannel(CFileItem *item);
-    virtual bool ActionPlayEpg(CFileItem *item, bool bPlayRecording);
-    virtual bool ActionDeleteChannel(CFileItem *item);
-    virtual bool ActionInputChannelNumber(int input);
+    /*!
+     * @brief Get the channel group for this window.
+     * @return the group or null, if no group set.
+     */
+   CPVRChannelGroupPtr GetChannelGroup(void);
 
-    virtual bool PlayFile(CFileItem *item, bool bPlayMinimized = false, bool bCheckResume = true);
-    virtual void ShowEPGInfo(CFileItem *item);
-    virtual void ShowRecordingInfo(CFileItem *item);
-    virtual bool UpdateEpgForChannel(CFileItem *item);
+    /*!
+     * @brief Set a new channel group, start listening to this group, optionally update window content.
+     * @param group The new group.
+     * @param bUpdate if true, window content will be updated.
+     */
+    void SetChannelGroup(CPVRChannelGroupPtr &&group, bool bUpdate = true);
+
     virtual void UpdateSelectedItemPath();
-    static bool CheckResumeRecording(CFileItem *item);
-
-    bool OnContextButtonEditTimer(CFileItem *item, CONTEXT_BUTTON button);
-    bool OnContextButtonEditTimerRule(CFileItem *item, CONTEXT_BUTTON button);
-    bool OnContextButtonDeleteTimerRule(CFileItem *item, CONTEXT_BUTTON button);
 
     void RegisterObservers(void);
     void UnregisterObservers(void);
-
-    static CCriticalSection m_selectedItemPathsLock;
-    static std::string m_selectedItemPaths[2];
 
     CCriticalSection m_critSection;
     bool m_bRadio;
 
   private:
-    /*!
-     * @brief Open a dialog to confirm timer delete.
-     * @param timer the timer to delete.
-     * @param bDeleteRule in: ignored
-     *                    out, for one shot timer scheduled by a timer rule: true to also delete the timer
-     *                    rule that has scheduled this timer, false to only delete the one shot timer.
-     *                    out, for one shot timer not scheduled by a timer rule: ignored
-     * @return true, to proceed with delete, false otherwise.
-     */
-    static bool ConfirmDeleteTimer(const CPVRTimerInfoTagPtr &timer, bool &bDeleteRule);
-
-    /*!
-     * @brief Open a dialog to confirm stop recording.
-     * @param timer the recording to stop (actually the timer to delete).
-     * @return true, to proceed with delete, false otherwise.
-     */
-    static bool ConfirmStopRecording(const CPVRTimerInfoTagPtr &timer);
+    bool OpenChannelGroupSelectionDialog(void);
 
     /*!
      * @brief Show or update the progress dialog.
@@ -164,9 +118,7 @@ namespace PVR
      */
     void HideProgressDialog(void);
 
-    static bool DeleteTimer(CFileItem *item, bool bIsRecording, bool bDeleteRule);
-    static bool AddTimer(CFileItem *item, bool bCreateRule, bool bShowTimerSettings);
-
+    std::unique_ptr<CGUIPVRChannelGroupsSelector> m_channelGroupsSelector;
     CPVRChannelGroupPtr m_channelGroup;
     XbmcThreads::EndTime m_refreshTimeout;
     CGUIDialogProgressBarHandle *m_progressHandle; /*!< progress dialog that is displayed while the pvr manager is loading */

@@ -1,32 +1,22 @@
  /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "AddonClass.h"
 #include "AddonString.h"
+#include "Alternative.h"
+#include "ListItem.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
-#include "Alternative.h"
 
 #define INPUT_ALPHANUM        0
 #define INPUT_NUMERIC         1
@@ -56,8 +46,8 @@ namespace XBMCAddon
     {
     public:
 
-      inline Dialog() {}
-      virtual ~Dialog();
+      inline Dialog() = default;
+      ~Dialog() override;
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
@@ -83,6 +73,7 @@ namespace XBMCAddon
       ///
       ///
       ///------------------------------------------------------------------------
+      /// @python_v13 Added new option **autoclose**.
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -94,7 +85,7 @@ namespace XBMCAddon
       ///
       yesno(...);
 #else
-      bool yesno(const String& heading, const String& line1, 
+      bool yesno(const String& heading, const String& line1,
                  const String& line2 = emptyString,
                  const String& line3 = emptyString,
                  const String& nolabel = emptyString,
@@ -105,7 +96,37 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_Dialog
-      /// \python_func{ xbmcgui.Dialog().select(heading, list[, autoclose,preselect]) }
+      /// \python_func{ xbmcgui.Dialog().info(listitem) }
+      ///------------------------------------------------------------------------
+      ///
+      /// **Info dialog**
+      ///
+      /// Show the corresponding info dialog for a given listitem
+      ///
+      /// @param listitem       xbmcgui.ListItem - ListItem to show info for.
+      /// @return Returns whether the dialog opened successfully.
+      ///
+      ///
+      ///------------------------------------------------------------------------
+      /// @python_v17 New function added.
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// dialog = xbmcgui.Dialog()
+      /// ret = dialog.info(listitem)
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
+      info(...);
+#else
+      bool info(const ListItem* item);
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_Dialog
+      /// \python_func{ xbmcgui.Dialog().select(heading, list[, autoclose, preselect, useDetails]) }
       ///------------------------------------------------------------------------
       ///
       /// **Select dialog**
@@ -113,14 +134,17 @@ namespace XBMCAddon
       /// Show of a dialog to select of an entry as a key
       ///
       /// @param heading        string or unicode - dialog heading.
-      /// @param list           string list - list of items.
+      /// @param list           list of strings / xbmcgui.ListItems - list of items shown in dialog.
       /// @param autoclose      [opt] integer - milliseconds to autoclose dialog. (default=do not autoclose)
       /// @param preselect      [opt] integer - index of preselected item. (default=no preselected item)
+      /// @param useDetails     [opt] bool - use detailed list instead of a compact list. (default=false)
       /// @return Returns the position of the highlighted item as an integer.
       ///
       ///
       ///------------------------------------------------------------------------
       /// @python_v17 **preselect** option added.
+      /// @python_v17 Added new option **useDetails**.
+      /// @python_v17 Allow listitems for parameter **list**
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -132,7 +156,7 @@ namespace XBMCAddon
       ///
       select(...);
 #else
-      int select(const String& heading, const std::vector<String>& list, int autoclose=0, int preselect=-1);
+      int select(const String& heading, const std::vector<Alternative<String, const ListItem* > > & list, int autoclose=0, int preselect=-1, bool useDetails=false);
 #endif
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
@@ -167,17 +191,18 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_Dialog
-      /// \python_func{ xbmcgui.Dialog().multiselect(heading, options[, autoclose, preselect]) }
+      /// \python_func{ xbmcgui.Dialog().multiselect(heading, options[, autoclose, preselect, useDetails]) }
       ///------------------------------------------------------------------------
       ///
       /// Show a multi-select dialog.
       ///
       /// @param heading        string or unicode - dialog heading.
-      /// @param options        list of string - options to choose from.
+      /// @param options        list of strings / xbmcgui.ListItems - options to choose from.
       /// @param autoclose      [opt] integer - milliseconds to autoclose dialog.
       ///                       (default=do not autoclose)
       /// @param preselect      [opt] list of int - indexes of items to preselect
       ///                       in list (default: do not preselect any item)
+      /// @param useDetails     [opt] bool - use detailed list instead of a compact list. (default=false)
       /// @return               Returns the selected items as a list of indices,
       ///                       or None if cancelled.
       ///
@@ -185,6 +210,8 @@ namespace XBMCAddon
       ///------------------------------------------------------------------------
       /// @python_v16 New function added.
       /// @python_v17 Added new option **preselect**.
+      /// @python_v17 Added new option **useDetails**.
+      /// @python_v17 Allow listitems for parameter **options**
       ///
       /// **Example:**
       /// @code{.py}
@@ -196,7 +223,7 @@ namespace XBMCAddon
       ///
       multiselect(...);
 #else
-      std::unique_ptr<std::vector<int> > multiselect(const String& heading, const std::vector<String>& options, int autoclose=0, const std::vector<int>& preselect = std::vector<int>());
+      std::unique_ptr<std::vector<int> > multiselect(const String& heading, const std::vector<Alternative<String, const ListItem* > > & options, int autoclose=0, const std::vector<int>& preselect = std::vector<int>(), bool useDetails=false);
 #endif
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
@@ -239,19 +266,22 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_Dialog
-      /// \python_func{ xbmcgui.Dialog().textviewer(heading, text) }
+      /// \python_func{ xbmcgui.Dialog().textviewer(heading, text, usemono) }
       ///------------------------------------------------------------------------
       ///
-      /// **TextViewe dialog**
+      /// **TextViewer dialog**
       ///
       /// The text viewer dialog can be used to display descriptions, help texts
       /// or other larger texts.
       ///
       /// @param heading       string or unicode - dialog heading.
       /// @param text          string or unicode - text.
+      /// @param usemono       [opt] bool - use monospace font
       ///
       ///
       ///------------------------------------------------------------------------
+      /// @python_v16 New function added.
+      /// @python_v18 New optional param added **usemono**.
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -263,7 +293,7 @@ namespace XBMCAddon
       ///
       textviewer(...);
 #else
-      void textviewer(const String& heading, const String& text);
+      void textviewer(const String& heading, const String& text, bool usemono = false);
 #endif
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
@@ -288,7 +318,17 @@ namespace XBMCAddon
       /// |   2   | ShowAndGetImage                 |
       /// |   3   | ShowAndGetWriteableDirectory    |
       /// @param heading        string or unicode - dialog heading.
-      /// @param shares         string or unicode - from [sources.xml](http://kodi.wiki/view/Sources.xml) . (i.e. 'myprograms')
+      /// @param shares         string or unicode - from [sources.xml](http://kodi.wiki/view/Sources.xml)
+      /// | Param          | Name                                         |
+      /// |:--------------:|:---------------------------------------------|
+      /// |   "programs"   | list program addons
+      /// |   "video"      | list video sources
+      /// |   "music"      | list music sources
+      /// |   "pictures"   | list picture sources
+      /// |   "files"      | list file sources (added through filemanager)
+      /// |   "games"      | list game sources
+      /// |   "local"      | list local drives
+      /// |   ""           | list local drives and network shares
       /// @param mask           [opt] string or unicode - '|' separated file mask. (i.e. '.jpg|.png')
       /// @param useThumbs      [opt] boolean - if True autoswitch to Thumb view if files exist.
       /// @param treatAsFolder  [opt] boolean - if True playlists and archives act as folders.
@@ -298,12 +338,13 @@ namespace XBMCAddon
       /// @return If enableMultiple is False (default): returns filename and/or path as a string
       ///        to the location of the highlighted item, if user pressed 'Ok' or a masked item
       ///        was selected. Returns the default value if dialog was canceled.
-      ///        If enableMultiple is True: returns tuple of marked filenames as a strin
+      ///        If enableMultiple is True: returns tuple of marked filenames as a string
       ///        if user pressed 'Ok' or a masked item was selected. Returns empty tuple if dialog was canceled.\n\n
       ///        If type is 0 or 3 the enableMultiple parameter is ignore
       ///
       ///
       ///------------------------------------------------------------------------
+      /// @python_v18 New option added to browse network and/or local drives.
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -343,7 +384,17 @@ namespace XBMCAddon
       /// |   2   | ShowAndGetImage
       /// |   3   | ShowAndGetWriteableDirectory
       /// @param heading        string or unicode - dialog heading.
-      /// @param shares         string or unicode - from [sources.xml](http://kodi.wiki/view/Sources.xml) . (i.e. 'myprograms')
+      /// @param shares         string or unicode - from [sources.xml](http://kodi.wiki/view/Sources.xml)
+      /// | Param          | Name                                         |
+      /// |:--------------:|:---------------------------------------------|
+      /// |   "programs"   | list program addons
+      /// |   "video"      | list video sources
+      /// |   "music"      | list music sources
+      /// |   "pictures"   | list picture sources
+      /// |   "files"      | list file sources (added through filemanager)
+      /// |   "games"      | list game sources
+      /// |   "local"      | list local drives
+      /// |   ""           | list local drives and network shares
       /// @param mask           [opt] string or unicode - '|' separated file mask. (i.e. '.jpg|.png')
       /// @param useThumbs      [opt] boolean - if True autoswitch to Thumb view if files exist (default=false).
       /// @param treatAsFolder  [opt] boolean - if True playlists and archives act as folders (default=false).
@@ -355,6 +406,7 @@ namespace XBMCAddon
       ///
       ///
       ///------------------------------------------------------------------------
+      /// @python_v18 New option added to browse network and/or local drives.
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -367,8 +419,8 @@ namespace XBMCAddon
       browseSingle(...);
 #else
       String browseSingle(int type, const String& heading, const String& shares,
-                          const String& mask = emptyString, bool useThumbs = false, 
-                          bool treatAsFolder = false, 
+                          const String& mask = emptyString, bool useThumbs = false,
+                          bool treatAsFolder = false,
                           const String& defaultt = emptyString );
 #endif
 
@@ -392,7 +444,17 @@ namespace XBMCAddon
       /// |   1   | ShowAndGetFile
       /// |   2   | ShowAndGetImage
       /// @param heading        string or unicode - dialog heading.
-      /// @param shares         string or unicode - from [sources.xml](http://kodi.wiki/view/Sources.xml) . (i.e. 'myprograms')
+      /// @param shares         string or unicode - from [sources.xml](http://kodi.wiki/view/Sources.xml)
+      /// | Param          | Name                                         |
+      /// |:--------------:|:---------------------------------------------|
+      /// |   "programs"   | list program addons
+      /// |   "video"      | list video sources
+      /// |   "music"      | list music sources
+      /// |   "pictures"   | list picture sources
+      /// |   "files"      | list file sources (added through filemanager)
+      /// |   "games"      | list game sources
+      /// |   "local"      | list local drives
+      /// |   ""           | list local drives and network shares
       /// @param mask           [opt] string or unicode - '|' separated file mask. (i.e. '.jpg|.png')
       /// @param useThumbs      [opt] boolean - if True autoswitch to Thumb view if files exist (default=false).
       /// @param treatAsFolder  [opt] boolean - if True playlists and archives act as folders (default=false).
@@ -402,6 +464,7 @@ namespace XBMCAddon
       ///
       ///
       ///------------------------------------------------------------------------
+      /// @python_v18 New option added to browse network and/or local drives.
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -414,8 +477,8 @@ namespace XBMCAddon
       browseMultiple(...);
 #else
       std::vector<String> browseMultiple(int type, const String& heading, const String& shares,
-                                         const String& mask = emptyString, bool useThumbs = false, 
-                                         bool treatAsFolder = false, 
+                                         const String& mask = emptyString, bool useThumbs = false,
+                                         bool treatAsFolder = false,
                                          const String& defaultt = emptyString );
 #endif
 
@@ -479,6 +542,7 @@ namespace XBMCAddon
       ///
       ///
       ///------------------------------------------------------------------------
+      /// @python_v13 New function added.
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -524,6 +588,7 @@ namespace XBMCAddon
       ///
       ///
       ///------------------------------------------------------------------------
+      /// @python_v13 New function added.
       ///
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
@@ -553,16 +618,16 @@ namespace XBMCAddon
     ///
     class DialogProgress : public AddonClass
     {
-      CGUIDialogProgress* dlg;
-      bool                open;
+      CGUIDialogProgress* dlg = nullptr;
+      bool                open = false;
 
     protected:
-      virtual void deallocating();
+      void deallocating() override;
 
     public:
 
-      DialogProgress() : dlg(NULL), open(false) {}
-      virtual ~DialogProgress();
+      DialogProgress() = default;
+      ~DialogProgress() override;
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
@@ -593,7 +658,7 @@ namespace XBMCAddon
       ///
       create(...);
 #else
-      void create(const String& heading, const String& line1 = emptyString, 
+      void create(const String& heading, const String& line1 = emptyString,
                   const String& line2 = emptyString,
                   const String& line3 = emptyString);
 #endif
@@ -612,7 +677,6 @@ namespace XBMCAddon
       /// @param line3          [opt] string or unicode - line #3 text.
       ///
       /// @note It is preferred to only use line1 as it is actually a multi-line text. In this case line2 and line3 must be omitted.
-      /// @note If percent == 0, the progressbar will be hidden.
       ///
       ///
       ///------------------------------------------------------------------------
@@ -626,7 +690,7 @@ namespace XBMCAddon
       ///
       update(...);
 #else
-      void update(int percent, const String& line1 = emptyString, 
+      void update(int percent, const String& line1 = emptyString,
                   const String& line2 = emptyString,
                   const String& line3 = emptyString);
 #endif
@@ -679,6 +743,114 @@ namespace XBMCAddon
       bool iscanceled();
 #endif
     };
+
+    //@}
+
+    ///
+    /// \defgroup python_DialogBusy DialogBusy
+    /// \ingroup python_xbmcgui
+    /// @{
+    /// @brief <b>Kodi's busy dialog class</b>
+    ///
+    ///-----------------------------------------------------------------------
+    /// @python_v18 removed, usage results in nop!
+    ///
+    class DialogBusy : public AddonClass
+    {
+
+    protected:
+      void deallocating() override;
+
+    public:
+
+      DialogBusy() {}
+      ~DialogBusy() override;
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_DialogBusy
+      /// \python_func{ xbmcgui.DialogBusy().create() }
+      ///------------------------------------------------------------------------
+      ///
+      /// Create and show a busy dialog.
+      ///
+      /// @note Use update() to update the progressbar.
+      ///
+      ///
+      ///------------------------------------------------------------------------
+      /// @python_v18 removed, usage results in nop!
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// dialog = xbmcgui.DialogBusy()
+      /// dialog.create()
+      /// ..
+      /// ~~~~~~~~~~~~~
+      ///
+      create(...);
+#else
+      void create();
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_DialogBusy
+      /// \python_func{ xbmcgui.DialogBusy().update(percent) }
+      ///------------------------------------------------------------------------
+      ///
+      /// Updates the busy dialog.
+      ///
+      /// @param percent        integer - percent complete. (-1:100)
+      ///
+      /// @note If percent == -1 (default), the progressbar will be hidden.
+      ///
+      ///
+      ///------------------------------------------------------------------------
+      /// @python_v18 removed, usage results in nop!
+      ///
+      update(...);
+#else
+      void update(int percent) const;
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_DialogBusy
+      /// \python_func{ xbmcgui.DialogBusy().close() }
+      ///------------------------------------------------------------------------
+      ///
+      /// Close the progress dialog.
+      ///
+      ///
+      ///------------------------------------------------------------------------
+      /// @python_v18 removed, usage results in nop!
+      ///
+      close(...);
+#else
+      void close();
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_DialogBusy
+      /// \python_func{ xbmcgui.DialogBusy().iscanceled() }
+      ///------------------------------------------------------------------------
+      ///
+      /// Checks if busy dialog is canceled.
+      ///
+      /// @return True if the user pressed cancel.
+      ///
+      ///
+      ///------------------------------------------------------------------------
+      /// @python_v18 removed, usage results in nop!
+      ///
+      iscanceled(...);
+#else
+      bool iscanceled() const;
+#endif
+    };
+
     //@}
 
     ///
@@ -690,17 +862,17 @@ namespace XBMCAddon
     ///
     class DialogProgressBG : public AddonClass
     {
-      CGUIDialogExtendedProgressBar* dlg;
-      CGUIDialogProgressBarHandle* handle;
-      bool open;
+      CGUIDialogExtendedProgressBar* dlg = nullptr;
+      CGUIDialogProgressBarHandle* handle = nullptr;
+      bool open = false;
 
     protected:
-      virtual void deallocating();
+      void deallocating() override;
 
     public:
 
-      DialogProgressBG() : dlg(NULL), handle(NULL), open(false) {}
-      virtual ~DialogProgressBG();
+      DialogProgressBG() = default;
+      ~DialogProgressBG() override;
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///

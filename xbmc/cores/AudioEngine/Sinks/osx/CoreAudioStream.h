@@ -1,25 +1,12 @@
-#pragma once
 /*
- *      Copyright (C) 2011-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2011-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#include "system.h"
+#pragma once
 
 #if defined(TARGET_DARWIN_OSX)
 
@@ -30,11 +17,6 @@
 #include <list>
 #include <vector>
 
-// not defined in 10.6 sdk
-#ifndef kIOAudioDeviceTransportTypeThunderbolt
-#define kIOAudioDeviceTransportTypeThunderbolt 'thun'
-#endif
-
 
 typedef std::vector<AudioStreamID> AudioStreamIdList;
 typedef std::vector<AudioStreamRangedDescription> StreamFormatList;
@@ -44,7 +26,7 @@ class CCoreAudioStream
 public:
   CCoreAudioStream();
   virtual ~CCoreAudioStream();
-  
+
   bool    Open(AudioStreamID streamId);
   void    Close(bool restore = true);
 
@@ -60,7 +42,7 @@ public:
   bool    GetAvailablePhysicalFormats(StreamFormatList *pList);
   static bool GetAvailableVirtualFormats(AudioStreamID id, StreamFormatList *pList);
   static bool GetAvailablePhysicalFormats(AudioStreamID id, StreamFormatList *pList);
-  static bool IsDigitalOuptut(AudioStreamID id);
+  static bool IsDigitalOutput(AudioStreamID id);
   static bool GetStartingChannelInDevice(AudioStreamID id, UInt32 &startingChannel);
 
 protected:
@@ -71,7 +53,7 @@ protected:
   CEvent m_physical_format_event;
 
   AudioStreamID m_StreamId;
-  AudioStreamBasicDescription m_OriginalVirtualFormat;  
+  AudioStreamBasicDescription m_OriginalVirtualFormat;
   AudioStreamBasicDescription m_OriginalPhysicalFormat;
 };
 

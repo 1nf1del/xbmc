@@ -1,7 +1,7 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile endian-c++11-narrowing.patch
 
 # lib name, version
 LIBNAME=autoconf
@@ -14,8 +14,6 @@ CONFIGURE=./configure --prefix=$(PREFIX)
 
 LIBDYLIB=$(PLATFORM)/bin/autoconf
 
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
-
 all: .installed-$(PLATFORM)
 
 $(TARBALLS_LOCATION)/$(ARCHIVE):
@@ -24,6 +22,7 @@ $(TARBALLS_LOCATION)/$(ARCHIVE):
 $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	-rm -rf $(PLATFORM)/*; mkdir -p $(PLATFORM)
 	cd $(PLATFORM); $(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
+	cd $(PLATFORM); patch -p1 -i ../endian-c++11-narrowing.patch
 
 $(LIBDYLIB): $(PLATFORM)
 	cd $(PLATFORM); $(CONFIGURE)

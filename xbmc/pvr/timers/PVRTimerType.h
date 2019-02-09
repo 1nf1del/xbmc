@@ -1,35 +1,28 @@
-#pragma once
 /*
- *      Copyright (C) 2012-2015 Team Kodi
- *      http://kodi.tv
+ *  Copyright (C) 2012-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with Kodi; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#include <memory>
+#pragma once
+
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
+
+#include "pvr/PVRTypes.h"
 
 struct PVR_TIMER_TYPE;
 
 namespace PVR
 {
-  class CPVRTimerType;
-  typedef std::shared_ptr<CPVRTimerType> CPVRTimerTypePtr;
+  static const int DEFAULT_RECORDING_PRIORITY = 50;
+  static const int DEFAULT_RECORDING_LIFETIME = 99; // days
+  static const unsigned int DEFAULT_RECORDING_DUPLICATEHANDLING = 0;
 
   class CPVRTimerType
   {
@@ -148,6 +141,12 @@ namespace PVR
     bool IsReadOnly() const { return (m_iAttributes & PVR_TIMER_TYPE_IS_READONLY) > 0; }
 
     /*!
+     * @brief Check whether this type allows deletion.
+     * @return True if type allows deletion, false otherwise.
+     */
+    bool AllowsDelete() const { return !IsReadOnly() || SupportsReadOnlyDelete(); }
+
+    /*!
      * @brief Check whether this type forbids creation of new timers of this type.
      * @return True if new instances are forbidden, false otherwise.
      */
@@ -164,13 +163,20 @@ namespace PVR
      * @return True if new instances require EPG info, false otherwise.
      */
     bool RequiresEpgTagOnCreate() const { return (m_iAttributes & (PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE |
-                                                                   PVR_TIMER_TYPE_REQUIRES_EPG_SERIES_ON_CREATE)) > 0; }
+                                                                   PVR_TIMER_TYPE_REQUIRES_EPG_SERIES_ON_CREATE |
+                                                                   PVR_TIMER_TYPE_REQUIRES_EPG_SERIESLINK_ON_CREATE)) > 0; }
 
     /*!
      * @brief Check whether this timer type requires epg tag info including series attributes to be present.
      * @return True if new instances require an EPG tag with series attributes, false otherwise.
      */
     bool RequiresEpgSeriesOnCreate() const { return (m_iAttributes & PVR_TIMER_TYPE_REQUIRES_EPG_SERIES_ON_CREATE) > 0; }
+
+    /*!
+     * @brief Check whether this timer type requires epg tag info including a series link to be present.
+     * @return True if new instances require an EPG tag with a series link, false otherwise.
+     */
+    bool RequiresEpgSeriesLinkOnCreate() const { return (m_iAttributes & PVR_TIMER_TYPE_REQUIRES_EPG_SERIESLINK_ON_CREATE) > 0; }
 
     /*!
      * @brief Check whether this type supports the "enabling/disabling" of timers of its type.
@@ -275,6 +281,18 @@ namespace PVR
     bool SupportsRecordingGroup() const { return (m_iAttributes & PVR_TIMER_TYPE_SUPPORTS_RECORDING_GROUP) > 0; }
 
     /*!
+     * @brief Check whether this type supports 'any channel', for example for defining a timer rule that should match any channel instead of a particular channel.
+     * @return True if any channel is supported, false otherwise.
+     */
+    bool SupportsAnyChannel() const { return (m_iAttributes & PVR_TIMER_TYPE_SUPPORTS_ANY_CHANNEL) > 0; }
+
+    /*!
+     * @brief Check whether this type supports deletion of an otherwise read-only timer.
+     * @return True if read-only deletion is supported, false otherwise.
+     */
+    bool SupportsReadOnlyDelete() const { return (m_iAttributes & PVR_TIMER_TYPE_SUPPORTS_READONLY_DELETE) > 0; }
+
+    /*!
      * @brief Obtain a list with all possible values for the priority attribute.
      * @param list out, the list with the values or an empty list, if priority is not supported by this type.
      */
@@ -288,7 +306,7 @@ namespace PVR
 
     /*!
      * @brief Obtain a list with all possible values for the lifetime attribute.
-     * @param list out, the list with the values or an empty list, if liftime is not supported by this type.
+     * @param list out, the list with the values or an empty list, if lifetime is not supported by this type.
      */
     void GetLifetimeValues(std::vector< std::pair<std::string, int> > &list) const;
 
@@ -334,7 +352,6 @@ namespace PVR
      */
     int GetRecordingGroupDefault() const { return m_iRecordingGroupDefault; }
 
-
   private:
     void InitAttributeValues(const PVR_TIMER_TYPE &type);
     void InitPriorityValues(const PVR_TIMER_TYPE &type);
@@ -343,19 +360,19 @@ namespace PVR
     void InitPreventDuplicateEpisodesValues(const PVR_TIMER_TYPE &type);
     void InitRecordingGroupValues(const PVR_TIMER_TYPE &type);
 
-    int           m_iClientId;
+    int           m_iClientId = -1;
     unsigned int  m_iTypeId;
     unsigned int  m_iAttributes;
     std::string   m_strDescription;
     std::vector< std::pair<std::string, int> > m_priorityValues;
-    int           m_iPriorityDefault;
+    int           m_iPriorityDefault = 50;
     std::vector< std::pair<std::string, int> > m_lifetimeValues;
-    int           m_iLifetimeDefault;
+    int           m_iLifetimeDefault = 365;
     std::vector< std::pair<std::string, int> > m_maxRecordingsValues;
-    int           m_iMaxRecordingsDefault;
+    int           m_iMaxRecordingsDefault = 0;
     std::vector< std::pair<std::string, int> > m_preventDupEpisodesValues;
-    unsigned int  m_iPreventDupEpisodesDefault;
+    unsigned int  m_iPreventDupEpisodesDefault = 0;
     std::vector< std::pair<std::string, int> > m_recordingGroupValues;
-    unsigned int  m_iRecordingGroupDefault;
+    unsigned int  m_iRecordingGroupDefault = 0;
   };
 }

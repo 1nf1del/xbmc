@@ -1,5 +1,5 @@
 include ../../Makefile.include
-DEPS= ../../Makefile.include Makefile
+DEPS= ../../Makefile.include Makefile 01-fix_fpermissive.patch 02-fixandroid.patch 03-fixtvos.patch
 
 #hint for building a fat lib - "lipo -arch i386 libboblight-i386.dylib -arch x86_64 libboblight-x86_64.dylib -output libboblight-fat.dylib"
 
@@ -17,8 +17,6 @@ CONFIGURE=./configure --prefix=$(PREFIX) \
   --without-libusb
 
 LIBDYLIB=$(PLATFORM)/src/.libs/$(LIBNAME).a
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: $(LIBDYLIB) .installed-$(PLATFORM)
 
@@ -42,16 +40,10 @@ $(LIBDYLIB): $(PLATFORM)
 	$(MAKE) -C $(PLATFORM)
 
 .installed-$(PLATFORM): $(LIBDYLIB)
-ifeq ($(OS),android)
-	rm -f $(PLATFORM)/src/.libs/libboblight.la $(PLATFORM)/src/.libs/libboblight.so $(PLATFORM)/src/.libs/libboblight.so.0
-	mv -f $(PLATFORM)/src/.libs/libboblight.so.0.0.0 $(PLATFORM)/src/.libs/libboblight.so
-	$(RPL) -e "libboblight.so.0" "libboblight.so\x00\x00" $(PLATFORM)/src/.libs/libboblight.so
-	-$(READELF) --dynamic $(PLATFORM)/src/.libs/libboblight.so | grep ibrary
-endif
 ifeq ($(OS),ios)
 ifeq ($(TARGET_PLATFORM),appletvos)
 	#deploy into source tree for tvos - we distribute libboblight with the bundle...
-	cp $(PLATFORM)/src/.libs/libboblight.0.dylib $(CORE_SOURCE_DIR)/system/libboblight-tvos.0.dylib
+	cp $(PLATFORM)/src/.libs/libboblight.0.dylib $(CMAKE_SOURCE_DIR)/system/libboblight-tvos.0.dylib
 endif
 else
 	echo "libboblight isn't a dependency of XBMC and won't be installed"

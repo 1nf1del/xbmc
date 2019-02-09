@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2016 Team Kodi
- *      http://kodi.tv
+ *  Copyright (C) 2016-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "addons/AddonBuilder.h"
@@ -46,16 +34,16 @@ TEST_F(TestAddonBuilder, ShouldFailWhenIdIsNotSet)
 
 TEST_F(TestAddonBuilder, ShouldBuildDependencyAddons)
 {
-  ADDONDEPS deps;
-  deps.emplace("a", std::make_pair(AddonVersion("1.0.0"), false));
+  std::vector<DependencyInfo> deps;
+  deps.emplace_back("a", AddonVersion("1.0.0"), false);
   builder.SetDependencies(deps);
   builder.SetType(ADDON_UNKNOWN);
   builder.SetExtPoint(nullptr);
   auto addon = builder.Build();
-  EXPECT_EQ(deps, addon->GetDeps());
+  EXPECT_EQ(deps, addon->GetDependencies());
 }
 
-TEST_F(TestAddonBuilder, ShouldReturnDeivedType)
+TEST_F(TestAddonBuilder, ShouldReturnDerivedType)
 {
   builder.SetType(ADDON_RESOURCE_LANGUAGE);
   auto addon = std::dynamic_pointer_cast<CLanguageResource>(builder.Build());

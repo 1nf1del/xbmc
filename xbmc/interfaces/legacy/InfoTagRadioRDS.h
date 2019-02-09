@@ -1,27 +1,16 @@
 /*
- *      Copyright (C) 2005-2015 Team KODI
- *      http://kodi.tv
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with KODI; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
+#pragma once
+
+#include "pvr/PVRTypes.h"
 #include "pvr/channels/PVRRadioRDSInfoTag.h"
 #include "AddonClass.h"
-
-#pragma once
 
 namespace XBMCAddon
 {
@@ -38,7 +27,7 @@ namespace XBMCAddon
     /// To get radio RDS info tag data of currently played PVR radio channel source.
     ///
     /// @note Info tag load is only be possible from present player class.\n
-    /// Also is all the data variable from radio channels and not known on begining
+    /// Also is all the data variable from radio channels and not known on beginning
     /// of radio receiving.
     ///
     ///
@@ -61,10 +50,10 @@ namespace XBMCAddon
 
     public:
 #ifndef SWIG
-      InfoTagRadioRDS(const PVR::CPVRRadioRDSInfoTagPtr tag);
+      explicit InfoTagRadioRDS(const PVR::CPVRChannelPtr& channel);
 #endif
       InfoTagRadioRDS();
-      virtual ~InfoTagRadioRDS();
+      ~InfoTagRadioRDS() override;
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///

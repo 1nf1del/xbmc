@@ -1,7 +1,7 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include Makefile
+DEPS= ../../Makefile.include Makefile visibility.patch
 
 # lib name, version
 LIBNAME=zlib
@@ -12,8 +12,6 @@ ARCHIVE=$(SOURCE).tar.gz
 CONFIGURE= CC="$(CC_FOR_BUILD)" CFLAGS="$(BUILD_CFLAGS)" ./configure --prefix=$(PREFIX)
 
 LIBDYLIB=$(PLATFORM)/$(LIBNAME).a
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

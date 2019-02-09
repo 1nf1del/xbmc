@@ -1,11 +1,11 @@
 include ../../Makefile.include
 PREFIX=$(NATIVEPREFIX)
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile
 
 # lib name, version
 LIBNAME=pcre
-VERSION=8.33
+VERSION=8.42
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
@@ -17,7 +17,6 @@ CONFIGURE=./configure --prefix=$(PREFIX) --disable-cpp \
 
 
 LIBDYLIB=$(PLATFORM)/.libs/lib$(LIBNAME).so
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 

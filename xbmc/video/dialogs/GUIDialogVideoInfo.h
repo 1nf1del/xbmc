@@ -1,27 +1,16 @@
-#pragma once
-
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
+
+#pragma once
 
 #include "guilib/GUIDialog.h"
 #include "FileItem.h"
+#include "MediaSource.h"
 
 class CVideoDatabase;
 
@@ -30,9 +19,9 @@ class CGUIDialogVideoInfo :
 {
 public:
   CGUIDialogVideoInfo(void);
-  virtual ~CGUIDialogVideoInfo(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
+  ~CGUIDialogVideoInfo(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction &action) override;
   void SetMovie(const CFileItem *item);
   bool NeedRefresh() const;
   bool RefreshAll() const;
@@ -40,9 +29,9 @@ public:
   bool HasUpdatedUserrating() const { return m_hasUpdatedUserrating; };
 
   std::string GetThumbnail() const;
-  virtual CFileItemPtr GetCurrentListItem(int offset = 0) { return m_movieItem; }
+  CFileItemPtr GetCurrentListItem(int offset = 0) override { return m_movieItem; }
   const CFileItemList& CurrentDirectory() const { return *m_castList; };
-  virtual bool HasListItems() const { return true; };
+  bool HasListItems() const override { return true; };
 
   static std::string ChooseArtType(const CFileItem &item, std::map<std::string, std::string> &currentArt);
   static void AddItemPathToFileBrowserSources(VECSOURCES &sources, const CFileItem &item);
@@ -69,20 +58,33 @@ public:
   static void ShowFor(const CFileItem& item);
 
 protected:
-  virtual void OnInitWindow();
+  void OnInitWindow() override;
   void Update();
   void SetLabel(int iControl, const std::string& strLabel);
-  void SetUserrating(int userrating);
+  void SetUserrating(int userrating) const;
 
   // link cast to movies
   void ClearCastList();
+  /**
+   * \brief Search the current directory for a string got from the virtual keyboard
+   * \param strSearch The search string
+   */
   void OnSearch(std::string& strSearch);
-  void DoSearch(std::string& strSearch, CFileItemList& items);
+  /**
+   * \brief Make the actual search for the OnSearch function.
+   * \param strSearch The search string
+   * \param items Items Found
+   */
+  void DoSearch(std::string& strSearch, CFileItemList& items) const;
+  /**
+   * \brief React on the selected search item
+   * \param pItem Search result item
+   */
   void OnSearchItemFound(const CFileItem* pItem);
   void Play(bool resume = false);
   void OnGetArt();
   void OnGetFanart();
-  void OnSetUserrating();
+  void OnSetUserrating() const;
   void PlayTrailer();
 
   static bool UpdateVideoItemSortTitle(const CFileItemPtr &pItem);
@@ -95,10 +97,10 @@ protected:
 
   CFileItemPtr m_movieItem;
   CFileItemList *m_castList;
-  bool m_bViewReview;
-  bool m_bRefresh;
-  bool m_bRefreshAll;
-  bool m_hasUpdatedThumb;
-  bool m_hasUpdatedUserrating;
-  int m_startUserrating;
+  bool m_bViewReview = false;
+  bool m_bRefresh = false;
+  bool m_bRefreshAll = true;
+  bool m_hasUpdatedThumb = false;
+  bool m_hasUpdatedUserrating = false;
+  int m_startUserrating = -1;
 };

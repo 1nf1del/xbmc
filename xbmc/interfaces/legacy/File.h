@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #pragma once
@@ -43,11 +31,10 @@ namespace XBMCAddon
     /// \python_class{ xbmcvfs.File(filepath, [mode]) }
     ///
     /// @param filepath             string Selected file path
-    /// @param mode                 [opt] string Additional mode options
+    /// @param mode                 [opt] string Additional mode options (if no mode is supplied, the default is Open for Read).
     ///   |  Mode  | Description                     |
     ///   |:------:|:--------------------------------|
     ///   |   w    | Open for write                  |
-    ///
     ///
     ///
     ///--------------------------------------------------------------------------
@@ -55,7 +42,7 @@ namespace XBMCAddon
     /// **Example:**
     /// ~~~~~~~~~~~~~{.py}
     /// ..
-    /// f = xbmcvfs.File(file, ['w'])
+    /// f = xbmcvfs.File(file, 'w')
     /// ..
     /// ~~~~~~~~~~~~~
     //
@@ -72,7 +59,7 @@ namespace XBMCAddon
           file->Open(filepath, XFILE::READ_NO_CACHE);
       }
 
-      inline ~File() { delete file; }
+      inline ~File() override { delete file; }
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
@@ -150,7 +137,7 @@ namespace XBMCAddon
       /// **Example:**
       /// ~~~~~~~~~~~~~{.py}
       /// ..
-      /// f = xbmcvfs.File(file, 'w', True)
+      /// f = xbmcvfs.File(file, 'w')
       /// result = f.write(buffer)
       /// f.close()
       /// ..
@@ -195,8 +182,8 @@ namespace XBMCAddon
       /// Seek to position in file.
       ///
       /// @param seekBytes          position in the file
-      /// @param iWhence            where in a file to seek from[0 begining,
-      ///                           1 current , 2 end possition]
+      /// @param iWhence            where in a file to seek from[0 beginning,
+      ///                           1 current , 2 end position]
       ///
       ///
       ///-----------------------------------------------------------------------

@@ -1,11 +1,11 @@
 # Kodi Media Center language file
 # Addon Name: Estuary
 # Addon id: skin.estuary
-# Addon Provider: phil65, Piers
+# Addon Provider: phil65, Ichabod Fletchman
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -36,10 +36,6 @@ msgctxt "#31072"
 msgid "Power Options"
 msgstr "மின்திறன் விருப்பங்கள்"
 
-msgctxt "#31081"
-msgid "Album info"
-msgstr "ஆல்பம்  தகவல்"
-
 msgctxt "#31096"
 msgid "Local subtitle available"
 msgstr "உள்ளூர் வசன வரிகள் இருக்கிறது"
@@ -47,3 +43,7 @@ msgstr "உள்ளூர் வசன வரிகள் இருக்கி
 msgctxt "#31100"
 msgid "Shift"
 msgstr "மாற்று"
+
+msgctxt "#31165"
+msgid "Profile name"
+msgstr "சுயவிவர பெயர்"

@@ -1,37 +1,30 @@
 /*
- *      Copyright (C) 2005-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2005-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #include "Skin.h"
 #include "AddonManager.h"
+#include "ServiceBroker.h"
 #include "Util.h"
 #include "dialogs/GUIDialogKaiToast.h"
 // fallback for new skin resolution code
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "guilib/WindowIDs.h"
 #include "messaging/ApplicationMessenger.h"
 #include "messaging/helpers/DialogHelper.h"
 #include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "settings/lib/Setting.h"
+#include "threads/Timer.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
@@ -53,6 +46,22 @@ std::shared_ptr<ADDON::CSkinInfo> g_SkinInfo;
 
 namespace ADDON
 {
+
+class CSkinSettingUpdateHandler : private ITimerCallback
+{
+public:
+  CSkinSettingUpdateHandler(CAddon& addon)
+  : m_addon(addon), m_timer(this) {}
+  ~CSkinSettingUpdateHandler() override = default;
+
+  void OnTimeout() override;
+  void TriggerSave();
+private:
+  static constexpr int DELAY = 500;
+
+  CAddon &m_addon;
+  CTimer m_timer;
+};
 
 bool CSkinSetting::Serialize(TiXmlElement* parent) const
 {
@@ -133,22 +142,22 @@ bool CSkinSettingBool::SerializeSetting(TiXmlElement* element) const
   return true;
 }
 
-std::unique_ptr<CSkinInfo> CSkinInfo::FromExtension(AddonProps props, const cp_extension_t* ext)
+std::unique_ptr<CSkinInfo> CSkinInfo::FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext)
 {
   RESOLUTION_INFO defaultRes = RESOLUTION_INFO();
   std::vector<RESOLUTION_INFO> resolutions;
 
   ELEMENTS elements;
-  if (CAddonMgr::GetInstance().GetExtElements(ext->configuration, "res", elements))
+  if (CServiceBroker::GetAddonMgr().GetExtElements(ext->configuration, "res", elements))
   {
     for (ELEMENTS::iterator i = elements.begin(); i != elements.end(); ++i)
     {
-      int width = atoi(CAddonMgr::GetInstance().GetExtValue(*i, "@width").c_str());
-      int height = atoi(CAddonMgr::GetInstance().GetExtValue(*i, "@height").c_str());
-      bool defRes = CAddonMgr::GetInstance().GetExtValue(*i, "@default") == "true";
-      std::string folder = CAddonMgr::GetInstance().GetExtValue(*i, "@folder");
+      int width = atoi(CServiceBroker::GetAddonMgr().GetExtValue(*i, "@width").c_str());
+      int height = atoi(CServiceBroker::GetAddonMgr().GetExtValue(*i, "@height").c_str());
+      bool defRes = CServiceBroker::GetAddonMgr().GetExtValue(*i, "@default") == "true";
+      std::string folder = CServiceBroker::GetAddonMgr().GetExtValue(*i, "@folder");
       float aspect = 0;
-      std::string strAspect = CAddonMgr::GetInstance().GetExtValue(*i, "@aspect");
+      std::string strAspect = CServiceBroker::GetAddonMgr().GetExtValue(*i, "@aspect");
       std::vector<std::string> fracs = StringUtils::Split(strAspect, ':');
       if (fracs.size() == 2)
         aspect = (float)(atof(fracs[0].c_str())/atof(fracs[1].c_str()));
@@ -164,41 +173,55 @@ std::unique_ptr<CSkinInfo> CSkinInfo::FromExtension(AddonProps props, const cp_e
   }
   else
   { // no resolutions specified -> backward compatibility
-    std::string defaultWide = CAddonMgr::GetInstance().GetExtValue(ext->configuration, "@defaultwideresolution");
+    std::string defaultWide = CServiceBroker::GetAddonMgr().GetExtValue(ext->configuration, "@defaultwideresolution");
     if (defaultWide.empty())
-      defaultWide = CAddonMgr::GetInstance().GetExtValue(ext->configuration, "@defaultresolution");
+      defaultWide = CServiceBroker::GetAddonMgr().GetExtValue(ext->configuration, "@defaultresolution");
     TranslateResolution(defaultWide, defaultRes);
   }
 
   float effectsSlowDown(1.f);
-  std::string str = CAddonMgr::GetInstance().GetExtValue(ext->configuration, "@effectslowdown");
+  std::string str = CServiceBroker::GetAddonMgr().GetExtValue(ext->configuration, "@effectslowdown");
   if (!str.empty())
     effectsSlowDown = (float)atof(str.c_str());
 
-  bool debugging = CAddonMgr::GetInstance().GetExtValue(ext->configuration, "@debugging") == "true";
+  bool debugging = CServiceBroker::GetAddonMgr().GetExtValue(ext->configuration, "@debugging") == "true";
 
-  return std::unique_ptr<CSkinInfo>(new CSkinInfo(std::move(props), defaultRes, resolutions,
+  return std::unique_ptr<CSkinInfo>(new CSkinInfo(std::move(addonInfo), defaultRes, resolutions,
       effectsSlowDown, debugging));
 }
 
 CSkinInfo::CSkinInfo(
-    AddonProps props,
+    CAddonInfo addonInfo,
+    const RESOLUTION_INFO& resolution /* = RESOLUTION_INFO() */)
+    : CAddon(std::move(addonInfo)),
+      m_defaultRes(resolution),
+      m_effectsSlowDown(1.f),
+      m_debugging(false)
+  {
+    m_settingsUpdateHandler.reset(new CSkinSettingUpdateHandler(*this));
+  }
+
+CSkinInfo::CSkinInfo(
+    CAddonInfo addonInfo,
     const RESOLUTION_INFO& resolution,
     const std::vector<RESOLUTION_INFO>& resolutions,
     float effectsSlowDown,
     bool debugging)
-    : CAddon(std::move(props)),
+    : CAddon(std::move(addonInfo)),
       m_defaultRes(resolution),
       m_resolutions(resolutions),
       m_effectsSlowDown(effectsSlowDown),
       m_debugging(debugging)
 {
+  m_settingsUpdateHandler.reset(new CSkinSettingUpdateHandler(*this));
   LoadStartupWindows(nullptr);
 }
 
+CSkinInfo::~CSkinInfo() = default;
+
 struct closestRes
 {
-  closestRes(const RESOLUTION_INFO &target) : m_target(target) { };
+  explicit closestRes(const RESOLUTION_INFO &target) : m_target(target) { };
   bool operator()(const RESOLUTION_INFO &i, const RESOLUTION_INFO &j)
   {
     float diff = fabs(i.DisplayRatio() - m_target.DisplayRatio()) - fabs(j.DisplayRatio() - m_target.DisplayRatio());
@@ -232,7 +255,7 @@ void CSkinInfo::Start()
   if (!m_resolutions.empty())
   {
     // find the closest resolution
-    const RESOLUTION_INFO &target = g_graphicsContext.GetResInfo();
+    const RESOLUTION_INFO &target = CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo();
     RESOLUTION_INFO& res = *std::min_element(m_resolutions.begin(), m_resolutions.end(), closestRes(target));
     m_currentAspect = res.strId;
   }
@@ -253,7 +276,7 @@ std::string CSkinInfo::GetSkinPath(const std::string& strFile, RESOLUTION_INFO *
     res = &tempRes;
 
   // find the closest resolution
-  const RESOLUTION_INFO &target = g_graphicsContext.GetResInfo();
+  const RESOLUTION_INFO &target = CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo();
   *res = *std::min_element(m_resolutions.begin(), m_resolutions.end(), closestRes(target));
 
   std::string strPath = URIUtils::AddFileToFolder(strPathToUse, res->strMode, strFile);
@@ -275,8 +298,8 @@ void CSkinInfo::LoadIncludes()
 {
   std::string includesPath = CSpecialProtocol::TranslatePathConvertCase(GetSkinPath("includes.xml"));
   CLog::Log(LOGINFO, "Loading skin includes from %s", includesPath.c_str());
-  m_includes.ClearIncludes();
-  m_includes.LoadIncludes(includesPath);
+  m_includes.Clear();
+  m_includes.Load(includesPath);
 }
 
 void CSkinInfo::ResolveIncludes(TiXmlElement *node, std::map<INFO::InfoPtr, bool>* xmlIncludeConditions /* = NULL */)
@@ -284,12 +307,12 @@ void CSkinInfo::ResolveIncludes(TiXmlElement *node, std::map<INFO::InfoPtr, bool
   if(xmlIncludeConditions)
     xmlIncludeConditions->clear();
 
-  m_includes.ResolveIncludes(node, xmlIncludeConditions);
+  m_includes.Resolve(node, xmlIncludeConditions);
 }
 
 int CSkinInfo::GetStartWindow() const
 {
-  int windowID = CSettings::GetInstance().GetInt(CSettings::SETTING_LOOKANDFEEL_STARTUPWINDOW);
+  int windowID = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_LOOKANDFEEL_STARTUPWINDOW);
   assert(m_startupWindows.size());
   for (std::vector<CStartupWindow>::const_iterator it = m_startupWindows.begin(); it != m_startupWindows.end(); ++it)
   {
@@ -359,7 +382,7 @@ int CSkinInfo::GetFirstWindow() const
 bool CSkinInfo::IsInUse() const
 {
   // Could extend this to prompt for reverting to the standard skin perhaps
-  return CSettings::GetInstance().GetString(CSettings::SETTING_LOOKANDFEEL_SKIN) == ID();
+  return CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN) == ID();
 }
 
 const INFO::CSkinVariableString* CSkinInfo::CreateSkinVariable(const std::string& name, int context)
@@ -369,6 +392,9 @@ const INFO::CSkinVariableString* CSkinInfo::CreateSkinVariable(const std::string
 
 void CSkinInfo::OnPreInstall()
 {
+  bool skinLoaded = g_SkinInfo != nullptr;
+  if (IsInUse() && skinLoaded)
+    CApplicationMessenger::GetInstance().SendMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, "UnloadSkin");
 }
 
 void CSkinInfo::OnPostInstall(bool update, bool modal)
@@ -376,28 +402,28 @@ void CSkinInfo::OnPostInstall(bool update, bool modal)
   if (!g_SkinInfo)
     return;
 
-  if (IsInUse() || (!update && !modal && 
+  if (IsInUse() || (!update && !modal &&
     HELPERS::ShowYesNoDialogText(CVariant{Name()}, CVariant{24099}) == DialogResponse::YES))
   {
-    CGUIDialogKaiToast *toast = (CGUIDialogKaiToast *)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
+    CGUIDialogKaiToast *toast = CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogKaiToast>(WINDOW_DIALOG_KAI_TOAST);
     if (toast)
     {
       toast->ResetTimer();
       toast->Close(true);
     }
-    if (CSettings::GetInstance().GetString(CSettings::SETTING_LOOKANDFEEL_SKIN) == ID())
+    if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_LOOKANDFEEL_SKIN) == ID())
       CApplicationMessenger::GetInstance().PostMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, "ReloadSkin");
     else
-      CSettings::GetInstance().SetString(CSettings::SETTING_LOOKANDFEEL_SKIN, ID());
+      CServiceBroker::GetSettingsComponent()->GetSettings()->SetString(CSettings::SETTING_LOOKANDFEEL_SKIN, ID());
   }
 }
 
-void CSkinInfo::SettingOptionsSkinColorsFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void CSkinInfo::SettingOptionsSkinColorsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
 {
   if (!g_SkinInfo)
     return;
 
-  std::string settingValue = ((const CSettingString*)setting)->GetValue();
+  std::string settingValue = std::static_pointer_cast<const CSettingString>(setting)->GetValue();
   // Remove the .xml extension from the Themes
   if (URIUtils::HasExtension(settingValue, ".xml"))
     URIUtils::RemoveExtension(settingValue);
@@ -405,7 +431,7 @@ void CSkinInfo::SettingOptionsSkinColorsFiller(const CSetting *setting, std::vec
 
   // There is a default theme (just defaults.xml)
   // any other *.xml files are additional color themes on top of this one.
-  
+
   // add the default label
   list.push_back(std::make_pair(g_localizeStrings.Get(15109), "SKINDEFAULT")); // the standard defaults.xml will be used!
 
@@ -414,7 +440,7 @@ void CSkinInfo::SettingOptionsSkinColorsFiller(const CSetting *setting, std::vec
   std::string strPath = URIUtils::AddFileToFolder(g_SkinInfo->Path(), "colors");
 
   CFileItemList items;
-  CDirectory::GetDirectory(CSpecialProtocol::TranslatePathConvertCase(strPath), items, ".xml");
+  CDirectory::GetDirectory(CSpecialProtocol::TranslatePathConvertCase(strPath), items, ".xml", DIR_FLAG_DEFAULTS);
   // Search for Themes in the Current skin!
   for (int i = 0; i < items.Size(); ++i)
   {
@@ -436,12 +462,12 @@ void CSkinInfo::SettingOptionsSkinColorsFiller(const CSetting *setting, std::vec
   }
 }
 
-void CSkinInfo::SettingOptionsSkinFontsFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void CSkinInfo::SettingOptionsSkinFontsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
 {
   if (!g_SkinInfo)
     return;
 
-  std::string settingValue = ((const CSettingString*)setting)->GetValue();
+  std::string settingValue = std::static_pointer_cast<const CSettingString>(setting)->GetValue();
   bool currentValueSet = false;
   std::string strPath = g_SkinInfo->GetSkinPath("Font.xml");
 
@@ -488,10 +514,10 @@ void CSkinInfo::SettingOptionsSkinFontsFiller(const CSetting *setting, std::vect
     current = list[0].second;
 }
 
-void CSkinInfo::SettingOptionsSkinThemesFiller(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void CSkinInfo::SettingOptionsSkinThemesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
 {
-  // get the choosen theme and remove the extension from the current theme (backward compat)
-  std::string settingValue = ((const CSettingString*)setting)->GetValue();
+  // get the chosen theme and remove the extension from the current theme (backward compat)
+  std::string settingValue = std::static_pointer_cast<const CSettingString>(setting)->GetValue();
   URIUtils::RemoveExtension(settingValue);
   current = "SKINDEFAULT";
 
@@ -517,12 +543,12 @@ void CSkinInfo::SettingOptionsSkinThemesFiller(const CSetting *setting, std::vec
   }
 }
 
-void CSkinInfo::SettingOptionsStartupWindowsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CSkinInfo::SettingOptionsStartupWindowsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
 {
   if (!g_SkinInfo)
     return;
 
-  int settingValue = ((const CSettingInt *)setting)->GetValue();
+  int settingValue = std::static_pointer_cast<const CSettingInt>(setting)->GetValue();
   current = -1;
 
   const std::vector<CStartupWindow> &startupWindows = g_SkinInfo->GetStartupWindows();
@@ -584,6 +610,7 @@ void CSkinInfo::SetString(int setting, const std::string &label)
   if (it != m_strings.end())
   {
     it->second->value = label;
+    m_settingsUpdateHandler->TriggerSave();
     return;
   }
 
@@ -606,6 +633,7 @@ int CSkinInfo::TranslateBool(const std::string &setting)
 
   int number = m_bools.size() + m_strings.size();
   m_bools.insert(std::pair<int, CSkinSettingBoolPtr>(number, skinBool));
+  m_settingsUpdateHandler->TriggerSave();
 
   return number;
 }
@@ -626,6 +654,7 @@ void CSkinInfo::SetBool(int setting, bool set)
   if (it != m_bools.end())
   {
     it->second->value = set;
+    m_settingsUpdateHandler->TriggerSave();
     return;
   }
 
@@ -641,6 +670,7 @@ void CSkinInfo::Reset(const std::string &setting)
     if (StringUtils::EqualsNoCase(setting, it.second->name))
     {
       it.second->value.clear();
+      m_settingsUpdateHandler->TriggerSave();
       return;
     }
   }
@@ -651,6 +681,7 @@ void CSkinInfo::Reset(const std::string &setting)
     if (StringUtils::EqualsNoCase(setting, it.second->name))
     {
       it.second->value = false;
+      m_settingsUpdateHandler->TriggerSave();
       return;
     }
   }
@@ -664,6 +695,8 @@ void CSkinInfo::Reset()
 
   for (auto& it : m_strings)
     it.second->value.clear();
+
+  m_settingsUpdateHandler->TriggerSave();
 }
 
 std::set<CSkinSettingPtr> CSkinInfo::ParseSettings(const TiXmlElement* rootElement)
@@ -708,7 +741,12 @@ CSkinSettingPtr CSkinInfo::ParseSetting(const TiXmlElement* element)
   return setting;
 }
 
-bool CSkinInfo::HasSettingsToSave() const
+bool CSkinInfo::SettingsInitialized() const
+{
+  return true;
+}
+
+bool CSkinInfo::SettingsLoaded() const
 {
   return !m_strings.empty() || !m_bools.empty();
 }
@@ -734,13 +772,13 @@ bool CSkinInfo::SettingsFromXML(const CXBMCTinyXML &doc, bool loadDefaults /* = 
     else if (setting->GetType() == "bool")
       m_bools.insert(std::pair<int, CSkinSettingBoolPtr>(number++, std::dynamic_pointer_cast<CSkinSettingBool>(setting)));
     else
-      CLog::Log(LOGWARNING, "CSkinInfo: ignoring setting of unknwon type \"%s\"", setting->GetType().c_str());
+      CLog::Log(LOGWARNING, "CSkinInfo: ignoring setting of unknown type \"%s\"", setting->GetType().c_str());
   }
 
   return true;
 }
 
-void CSkinInfo::SettingsToXML(CXBMCTinyXML &doc) const
+bool CSkinInfo::SettingsToXML(CXBMCTinyXML &doc) const
 {
   // add the <skinsettings> tag
   TiXmlElement rootElement(XML_SETTINGS);
@@ -748,7 +786,7 @@ void CSkinInfo::SettingsToXML(CXBMCTinyXML &doc) const
   if (settingsNode == NULL)
   {
     CLog::Log(LOGWARNING, "CSkinInfo: could not create <settings> tag");
-    return;
+    return false;
   }
 
   TiXmlElement* settingsElement = settingsNode->ToElement();
@@ -763,6 +801,21 @@ void CSkinInfo::SettingsToXML(CXBMCTinyXML &doc) const
     if (!it.second->Serialize(settingsElement))
       CLog::Log(LOGWARNING, "CSkinInfo: failed to save bool setting \"%s\"", it.second->name.c_str());
   }
+
+  return true;
+}
+
+void CSkinSettingUpdateHandler::OnTimeout()
+{
+  m_addon.SaveSettings();
+}
+
+void CSkinSettingUpdateHandler::TriggerSave()
+{
+  if (m_timer.IsRunning())
+    m_timer.Restart();
+  else
+    m_timer.Start(DELAY);
 }
 
 } /*namespace ADDON*/

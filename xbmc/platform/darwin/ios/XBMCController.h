@@ -1,21 +1,9 @@
 /*
- *      Copyright (C) 2010-2013 Team XBMC
- *      http://xbmc.org
+ *  Copyright (C) 2010-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
 #import <UIKit/UIKit.h>
@@ -40,7 +28,7 @@ typedef enum
   UIWindow *m_window;
   IOSEAGLView  *m_glView;
   int m_screensaverTimeout;
-	
+
   /* Touch handling */
   CGSize screensize;
   CGPoint lastGesturePoint;
@@ -49,12 +37,13 @@ typedef enum
   int  m_screenIdx;
 
   UIInterfaceOrientation orientation;
-  
+
   bool m_isPlayingBeforeInactive;
   UIBackgroundTaskIdentifier m_bgTask;
   NSTimer *m_networkAutoSuspendTimer;
   IOSPlaybackState m_playbackState;
   NSDictionary *nowPlayingInfo;
+  bool nativeKeyboardActive;
 }
 @property (readonly, nonatomic, getter=isAnimating) BOOL animating;
 @property CGPoint lastGesturePoint;
@@ -64,6 +53,7 @@ typedef enum
 @property CGSize screensize;
 @property (nonatomic, retain) NSTimer *m_networkAutoSuspendTimer;
 @property (nonatomic, retain) NSDictionary *nowPlayingInfo;
+@property bool nativeKeyboardActive;
 
 // message from which our instance is obtained
 - (void) pauseAnimation;
@@ -84,6 +74,7 @@ typedef enum
 - (void) createGestureRecognizers;
 - (void) activateKeyboard:(UIView *)view;
 - (void) deactivateKeyboard:(UIView *)view;
+- (void) nativeKeyboardActive: (bool)active;
 
 - (void) disableNetworkAutoSuspend;
 - (void) enableNetworkAutoSuspend:(id)obj;

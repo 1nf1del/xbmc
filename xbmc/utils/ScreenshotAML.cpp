@@ -1,29 +1,17 @@
 /*
- *      Copyright (C) 2015 Team Kodi
- *      http://kodi.tv
+ *  Copyright (C) 2015-2018 Team Kodi
+ *  This file is part of Kodi - https://kodi.tv
  *
- *  This Program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2, or (at your option)
- *  any later version.
- *
- *  This Program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with XBMC; see the file COPYING.  If not, see
- *  <http://www.gnu.org/licenses/>.
- *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSES/README.md for more information.
  */
 
-#include "system.h"
-#if defined(HAS_LIBAMCODEC)
 #include "utils/ScreenshotAML.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
 
 #include <sys/ioctl.h>
 
@@ -43,7 +31,8 @@ void CScreenshotAML::CaptureVideoFrame(unsigned char *buffer, int iWidth, int iH
   int captureFd = open(CAPTURE_DEVICEPATH, O_RDWR, 0);
   if (captureFd >= 0)
   {
-    int buffSize = iWidth * iHeight * 3;
+    int stride = ((iWidth + 31) & ~31) * 3;
+    int buffSize = stride * iHeight;
     int readSize = 0;
     // videobuffer should be rgb according to docu - but it is bgr ...
     unsigned char *videoBuffer = new unsigned char[buffSize];
@@ -51,7 +40,7 @@ void CScreenshotAML::CaptureVideoFrame(unsigned char *buffer, int iWidth, int iH
     if (videoBuffer != NULL)
     {
       // configure destination
-      ioctl(captureFd, AMVIDEOCAP_IOW_SET_WANTFRAME_WIDTH, iWidth);
+      ioctl(captureFd, AMVIDEOCAP_IOW_SET_WANTFRAME_WIDTH, stride / 3);
       ioctl(captureFd, AMVIDEOCAP_IOW_SET_WANTFRAME_HEIGHT, iHeight);
       readSize = pread(captureFd, videoBuffer, buffSize, 0);
     }
@@ -60,36 +49,37 @@ void CScreenshotAML::CaptureVideoFrame(unsigned char *buffer, int iWidth, int iH
 
     if (readSize == buffSize)
     {
-      unsigned char *videoPtr = videoBuffer;
-
       if (!bBlendToBuffer)
       {
         memset(buffer, 0xff, buffSize);
       }
 
-      for (int processedBytes = 0; processedBytes < buffSize; processedBytes += 3, buffer+=4)
+      for (int y = 0; y < iHeight; ++y)
       {
-        float alpha = buffer[3] / (float)255;
+        unsigned char *videoPtr = videoBuffer + y * stride;
 
-        if (bBlendToBuffer)
+        for (int x = 0; x < iWidth; ++x, buffer += 4, videoPtr += 3)
         {
-          //B
-          buffer[0] = alpha * (float)buffer[0] + (1 - alpha) * (float)videoPtr[0];
-          //G
-          buffer[1] = alpha * (float)buffer[1] + (1 - alpha) * (float)videoPtr[1];
-          //R
-          buffer[2] = alpha * (float)buffer[2] + (1 - alpha) * (float)videoPtr[2];
-          //A
-          buffer[3] = 0xff;// we are solid now
+          float alpha = buffer[3] / (float)255;
+
+          if (bBlendToBuffer)
+          {
+            //B
+            buffer[0] = alpha * (float)buffer[0] + (1 - alpha) * (float)videoPtr[0];
+            //G
+            buffer[1] = alpha * (float)buffer[1] + (1 - alpha) * (float)videoPtr[1];
+            //R
+            buffer[2] = alpha * (float)buffer[2] + (1 - alpha) * (float)videoPtr[2];
+            //A
+            buffer[3] = 0xff;// we are solid now
+          }
+          else
+          {
+            memcpy(buffer, videoPtr, 3);
+          }
         }
-        else
-        {
-          memcpy(buffer, videoPtr, 3);
-        }
-        videoPtr += 3;
       }
     }
     delete [] videoBuffer;
   }
 }
-#endif //defined(HAS_LIBAMCODEC)

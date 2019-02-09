@@ -1,5 +1,5 @@
 include ../../Makefile.include
-DEPS= ../../Makefile.include configure.patch Makefile
+DEPS= ../../Makefile.include Makefile configure.patch cross.patch
 
 # lib name, version
 LIBNAME=libcdio
@@ -13,8 +13,6 @@ CONFIGURE=cp -f $(CONFIG_SUB) $(CONFIG_GUESS) .; \
           --disable-cpp-progs --disable-cxx --disable-shared
 
 LIBDYLIB=$(PLATFORM)/lib/driver/.libs/$(LIBNAME).a
-
-CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)
 
